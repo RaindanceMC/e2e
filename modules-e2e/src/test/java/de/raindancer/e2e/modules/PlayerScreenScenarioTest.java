@@ -114,11 +114,11 @@ class PlayerScreenScenarioTest {
             assertThat(slot(practical, 32)).contains("Staff rank");
             ada.closeWindow();
 
-            // A trial mod: the same page, but what is not theirs is locked, says so, and does nothing when clicked;
+            // Support: the same page, but what is not theirs is locked, says so, and does nothing when clicked;
             // where Bo stands is not shown to somebody who may not teleport to him.
             Bot dee = server.player("Dee");
-            assertThat(server.console("promote Dee trial")).containsIgnoringCase("trial");
-            Await.ticks(10);
+            server.console("promote Dee support");
+            Await.until("Dee is support", WAIT, () -> dee.chatText().stream().anyMatch(line -> line.contains("Support")));
             dee.run("mod Bo");
             Await.until("Dee's page is filled", WAIT, () -> dee.window().map(w -> slot(w, 3)).orElse("").contains("Online"));
             Bot.Window trial = dee.window().orElseThrow();
