@@ -57,6 +57,10 @@ class EssentialsScenarioTest {
             Await.until("no [AFK] left over after coming back", Duration.ofSeconds(10),
                     () -> !tabOf(bo, cy).isEmpty() && !tabOf(bo, cy).contains("[AFK]"));
 
+            // Blocking and unblocking write the shared store — off the server thread, checked at the end.
+            bo.runAndExpect("ignore Cy", "no longer see messages");
+            bo.runAndExpect("unignore Cy", "hear from");
+
             // A nickname reaches the nametag above the head.
             bo.runAndExpect("nick Rainbow", "Rainbow");
             Await.until("Bo's nametag says Rainbow", Duration.ofSeconds(10),
