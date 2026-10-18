@@ -233,10 +233,21 @@ class EnchantsToolsScenarioTest {
             server.console("tp Tester 0.5 " + Y + " 0.5 0 0");
             Await.ticks(40);
 
-            // --- Launch: sneak and jump, up, the elytra opens, and away at 200 m/s ---------------------------
+            // --- Launch starts switched off: sneaking and jumping on it does nothing -----------------------------
             server.console("item replace entity Tester armor.chest with minecraft:elytra"
                     + "[minecraft:enchantments={\"rainsenchants:launch\":1}]");
             Await.ticks(10);
+            int whileOff = tester.pushes().size();
+            tester.sneak(true);
+            tester.moveTo(0.5, Y + 0.42, 0.5, false);
+            Await.ticks(40);
+            tester.sneak(false);
+            tester.moveTo(0.5, Y, 0.5, true);
+            assertThat(tester.pushes().stream().skip(whileOff).noneMatch(p -> p[1] > 2)).as("switched off").isTrue();
+            assertThat(server.console("settings set switched-off ,")).contains("is now");
+            Await.ticks(20);
+
+            // --- Launch, switched on: sneak and jump, up, the elytra opens, and away at 200 m/s -------------------
             int beforeLaunch = tester.pushes().size();
             tester.sneak(true);
             tester.moveTo(0.5, Y + 0.42, 0.5, false);
