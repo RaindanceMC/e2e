@@ -44,6 +44,19 @@ class EssentialsScenarioTest {
             cy.answer(() -> cy.clickButtonOn("[Congrats!]", 0), answer -> answer.says("You already cheered"));
             assertThat(cheersFor(server, "Bo")).isEqualTo(1);
 
+            // [AFK] comes off the moment somebody walks — also after leaving while away, when Core still
+            // carried the tag and this server had no idea they had ever been away.
+            cy.run("afk");
+            Await.until("Cy is AFK in Bo's tablist", Duration.ofSeconds(10), () -> tabOf(bo, cy).contains("[AFK]"));
+            walk(cy);
+            Await.until("walking takes [AFK] off", Duration.ofSeconds(10), () -> !tabOf(bo, cy).contains("[AFK]"));
+            cy.run("afk");
+            Await.until("Cy is AFK again", Duration.ofSeconds(10), () -> tabOf(bo, cy).contains("[AFK]"));
+            cy.rejoin();
+            walk(cy);
+            Await.until("no [AFK] left over after coming back", Duration.ofSeconds(10),
+                    () -> !tabOf(bo, cy).isEmpty() && !tabOf(bo, cy).contains("[AFK]"));
+
             // A nickname reaches the nametag above the head.
             bo.runAndExpect("nick Rainbow", "Rainbow");
             Await.until("Bo's nametag says Rainbow", Duration.ofSeconds(10),
@@ -78,6 +91,16 @@ class EssentialsScenarioTest {
 
             assertThat(server.paper.errorsFrom("RainsCore", "RainsEssentials", "RainsCosmetics")).isEmpty();
         }
+    }
+
+    private static String tabOf(Bot viewer, Bot shown) {
+        return viewer.tabName(shown.id()).orElse("");
+    }
+
+    private static void walk(Bot who) {
+        who.keys(true, false, false, false, false, false, false);
+        Await.ticks(5);
+        who.keys(false, false, false, false, false, false, false);
     }
 
     private static long greetingsTo(Server server, String name) {
