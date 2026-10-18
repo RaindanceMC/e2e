@@ -72,4 +72,21 @@ class EconomyMarketScenarioTest {
             assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy")).isEmpty();
         }
     }
+
+    @Test
+    @DisplayName("bulk for everything that stacks — beef has the bulk buttons, a sword has none")
+    void bulkForWhatStacks() {
+        try (Server server = Server.start("economy-bulk",
+                List.of("economy-standalone:RainsEconomy-.*"), List.of("The economy is up"))) {
+            Bot ada = server.player("Ada");
+            ada.run("shop cooked_beef");
+            ada.awaitWindow("Cooked Beef");
+            assertThat(ada.window().orElseThrow().slotNamed("Buy 128")).as("beef in bulk").isPresent();
+            ada.closeWindow();
+            ada.run("shop diamond_sword");
+            ada.awaitWindow("Diamond Sword");
+            assertThat(ada.window().orElseThrow().slotNamed("Buy 128")).as("no sword in bulk").isEmpty();
+            ada.closeWindow();
+        }
+    }
 }
