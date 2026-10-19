@@ -68,9 +68,9 @@ class ShopsInClaimScenarioTest {
             ada.expectChat("Marking out");
             ada.hold(ada.hotbarSlotOf(item -> item.material().toLowerCase().contains("stick")
                     || item.material().toLowerCase().contains("hoe")));
-            ada.useOn(X - 5, Y - 1, Z - 5);
+            ada.useOn(X - 2, Y - 1, Z); // corners within reach: the claim runs X-2..X+2, Z..Z+4
             ada.expectChat("Corner");
-            ada.useOn(X + 5, Y - 1, Z + 5);
+            ada.useOn(X + 2, Y - 1, Z + 4);
             ada.expectChat("What should it be called?");
             ada.say("market");
             ada.expectChat("Claimed");
@@ -85,7 +85,7 @@ class ShopsInClaimScenarioTest {
             ada.closeWindow();
             ada.run("bazaar create 10 0 2");
             ada.expectChat("Open for business");
-            server.console("tp Ada " + (X + 3) + " " + Y + " " + (Z + 3));
+            server.console("tp Ada " + (X + 1) + ".5 " + Y + " " + (Z + 3) + ".5");
             Await.ticks(20);
             ada.run("bazaar statue");
             ada.expectChat("A statue of you now stands here");
@@ -102,7 +102,7 @@ class ShopsInClaimScenarioTest {
 
             // ── and at the statue ───────────────────────────────────────────────────────────────────────────────
             UUID statue = mannequin(server);
-            server.console("tp Bo " + (X + 3) + " " + Y + " " + (Z + 1));
+            server.console("tp Bo " + (X + 1) + ".5 " + Y + " " + (Z + 1) + ".5");
             Await.until("Bo sees the statue", WAIT, () -> bo.sees(statue));
             bo.interact(statue);
             bo.clickSlot(slot(bo, "Diamond"));
