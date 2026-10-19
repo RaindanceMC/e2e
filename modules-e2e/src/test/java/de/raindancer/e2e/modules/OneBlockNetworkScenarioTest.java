@@ -28,8 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * one PostgreSQL as a RainsCore network — the island server is the one whose id is {@code oneblock}.
  *
  * <p>What is proved here and nowhere else: {@code /island} on the survival server lands a player on the island server,
- * where they choose the money once and get an island of their own world; breaking the block brings it back and pays
- * shards; shards unlock the nether, reached by {@code /island nether}; the money gate holds; a team invite from the
+ * where they choose the money once and get an island of their own world; breaking the block brings it back and moves
+ * it through its phases; the phase that opens the nether opens it, reached by {@code /island nether}; a real server
+ * reads the shipped phases without a problem; the money gate holds; a team invite from the
  * island server reaches a player on the survival server and joining moves them over; an empty island is unloaded, an
  * admin keeps one up or down, auto-unload switched off keeps it up through a restart; and none of it logs an error.
  */
@@ -40,7 +41,7 @@ class OneBlockNetworkScenarioTest {
     private static final String FORWARDING_SECRET = "e2e-forwarding-secret";
 
     @Test
-    @DisplayName("an island from the survival server, the block, shards, the nether, a team, unloading and holds")
+    @DisplayName("an island from the survival server, the block, its phases, the nether, a team, unloading and holds")
     void network() throws Exception {
         String paperGlobal = VelocityProxy.paperGlobal(FORWARDING_SECRET);
         LocalPostgres postgres = LocalPostgres.start(E2e.serverFolder("oneblock-net-postgres"));
@@ -86,9 +87,11 @@ class OneBlockNetworkScenarioTest {
 
             ada.expectSidebar("Your island");
             ada.expectSidebar("Pure");
-            ada.expectSidebar("Shards 0");
+            ada.expectSidebar("Meadow 1/13");
+            assertThat(island.logLines(line -> line.contains("content.yml:")))
+                    .as("every shipped block stands and every mob spawns on a real server").isEmpty();
 
-            // ── the block breaks, comes back, and every tenth break pays a shard ───────────────────────────────────
+            // ── the block breaks, comes back, and counts ───────────────────────────────────────────────────────────
             island.console("gamemode creative Ada");
             ada.flying(true);
             island.console("execute in minecraft:" + world + " run tp Ada 0.5 66 2.5 180 60");
@@ -99,15 +102,21 @@ class OneBlockNetworkScenarioTest {
             }
             Await.until("the block came back", WAIT, () -> !island.console("execute in minecraft:" + world
                     + " if block 0 64 0 minecraft:air").contains("passed"));
-            Await.until("ten breaks paid a shard", WAIT, () -> ada.sidebar().stream().anyMatch(line -> line.contains("Shards 1")));
             ada.expectSidebar("10 blocks broken");
 
-            // ── shards open the nether; /island nether goes there ──────────────────────────────────────────────────
+            // ── the break that reaches the next phase says so, and the block comes from it ─────────────────────────
+            island.console("islandadmin blocks Ada +389");
+            ada.dig(0, 64, 0);
+            ada.expectChat("broke through into Quarry");
+            ada.expectSidebar("Quarry 2/13");
+
+            // ── the nether is not for sale: the phase that opens it does ───────────────────────────────────────────
             ada.run("island nether");
-            ada.expectChat("still locked on your island");
-            island.console("islandadmin shards Ada 500");
-            ada.run("island unlock nether");
-            ada.expectChat("Unlocked");
+            ada.expectChat("opens when the overworld reaches Badlands");
+            island.console("islandadmin blocks Ada +6100");
+            ada.dig(0, 64, 0);
+            ada.expectChat("is open");
+            ada.expectSidebar("Badlands 9/13");
             ada.run("island nether");
             Await.until("Ada is in her island's nether", WAIT, () -> ada.world().contains(world + "_nether"));
             // The world changes on the client before the teleport is finished on the server; a trip asked for in
@@ -178,7 +187,7 @@ class OneBlockNetworkScenarioTest {
             island.awaitLog("This is the island server", WAIT);
             Await.until("after the restart it is up again by itself", WAIT, () -> info(island, "Ada").contains("loaded: true"));
             assertThat(info(island, "Ada")).contains("auto-unload: false");
-            Await.until("its shards survived the restart", WAIT, () -> island.console("islandadmin list").contains("Ada"));
+            Await.until("its island survived the restart", WAIT, () -> island.console("islandadmin list").contains("Ada"));
 
             assertThat(errors(island)).isEmpty();
             assertThat(errors(smp)).isEmpty();

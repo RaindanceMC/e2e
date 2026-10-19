@@ -63,24 +63,19 @@ class OneBlockScreenshotsTest {
                 server.runAs("Viewer", "island home");
                 Await.ticks(40);
 
-                server.console("islandadmin shards Viewer 650");
+                server.console("islandadmin blocks Viewer +2600");
                 server.runAs("Viewer", "island menu");
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("oneblock-5-island-menu.png"));
                 scout.closeWindow();
-                server.console("islandadmin shards Scout 650");
                 scout.run("island create");
                 Await.ticks(20);
 
-                server.runAs("Viewer", "island upgrades");
+                server.runAs("Viewer", "island phases");
                 Await.ticks(40);
-                // The first upgrade, twice: a bought one wears its level and a glint.
-                click(server, 0);
-                Await.ticks(20);
-                click(server, 0);
-                Await.ticks(30);
-                viewer.screenshot(shots.resolve("oneblock-6-upgrades.png"));
-                viewer.screenshotHovering(shots.resolve("oneblock-6b-upgrade-tooltip.png"), 0);
+                viewer.screenshot(shots.resolve("oneblock-6-phases.png"));
+                // The phase it is in: the bar, what is left, and what it turns into.
+                viewer.screenshotHovering(shots.resolve("oneblock-6b-phase-tooltip.png"), 4);
                 server.runAs("Viewer", "island team");
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("oneblock-7-team.png"));

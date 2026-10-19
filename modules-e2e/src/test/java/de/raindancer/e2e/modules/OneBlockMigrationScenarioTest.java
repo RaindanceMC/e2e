@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * goes, RainsOneBlock comes, and {@code /islandadmin migrate confirm} moves it.
  *
  * <p>What is proved: the block and the build keep their exact coordinates in the island's own world; the count pays
- * its shards and a nether AOneBlock had reached comes unlocked; the player comes back exactly where they logged out;
+ * its count carries on into the phases and a nether AOneBlock had reached comes unlocked; the player comes back exactly where they logged out;
  * the owner is asked for the money; running it again moves nothing twice; nothing logs an error.
  */
 @Tag("e2e")
@@ -36,7 +36,7 @@ class OneBlockMigrationScenarioTest {
     private static final Duration WAIT = Duration.ofSeconds(120);
 
     @Test
-    @DisplayName("a BentoBox island moves over with its block, its build, its shards and its player's spot")
+    @DisplayName("a BentoBox island moves over with its block, its build, its count and its player's spot")
     void migrate() throws Exception {
         Path bentoBox = Downloads.pinned("BentoBox-3.23.3.jar",
                 "https://cdn.modrinth.com/data/aBVLHiAW/versions/Wm9asg4I/BentoBox-3.23.3.jar",
@@ -106,7 +106,7 @@ class OneBlockMigrationScenarioTest {
             server.awaitLog("moved 1 island\\(s\\) over", WAIT);
             assertThat(server.console("islandadmin info Ada")).contains("Ada's island");
 
-            // ── Ada is back where she logged out, the build where she left it, the shards paid ─────────────────────
+            // ── Ada is back where she logged out, the build where she left it, the count kept ──────────────────────
             Bot back = server.bot("Ada").join();
             Await.until("Ada is on her island's own world", WAIT, () -> back.world().contains("island_"));
             String world = back.world().replace("minecraft:", "");
@@ -124,7 +124,7 @@ class OneBlockMigrationScenarioTest {
             back.click("Yes, do it");
             back.expectChat("plays with");
             back.expectSidebar("SMP economy");
-            back.expectSidebar("Shards " + (counted / 10));
+            back.expectSidebar("Trial Halls 10/13");
             back.expectSidebar(String.format("%,d blocks broken", counted));
 
             // ── the nether came unlocked with the progress ──────────────────────────────────────────────────────────
