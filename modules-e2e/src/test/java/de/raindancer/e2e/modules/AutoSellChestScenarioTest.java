@@ -74,6 +74,12 @@ class AutoSellChestScenarioTest {
             Await.ticks(20);
             String book = "minecraft:enchanted_book[minecraft:stored_enchantments={\"rainsenchants:auto_sell\":1}]";
 
+            // --- both can be crafted, and both recipes are in the book of whoever joins ----------------------
+            assertThat(server.console("recipe take Tester rainseconomy:auto_sell_chest")).as("unlocked on join")
+                    .doesNotContain("ouldn't").doesNotContain("nknown");
+            assertThat(server.console("recipe take Tester rainseconomy:economy_sell-wand")).as("unlocked on join")
+                    .doesNotContain("ouldn't").doesNotContain("nknown");
+
             // --- one book does not make a stack of chests into Auto Sell Chests -------------------------------
             server.console("give Tester minecraft:chest 2");
             server.console("give Tester " + book + " 1");
