@@ -58,6 +58,9 @@ class OneBlockNetworkScenarioTest {
                 .file("config/paper-global.yml", paperGlobal)
                 .file("plugins/RainsCore/network.yml", postgres.networkYml("oneblock", "minigames"))
                 .file("plugins/RainsOneBlock/config.yml", "unload-seconds: 10\n")
+                // As Lilly's island server has it from 0.4.0: pools, upgrades and shards. It must give way to phases.
+                .file("plugins/RainsOneBlock/content.yml", "shards:\n  every-blocks: 10\npools:\n  overworld:\n"
+                        + "    dirt: 5\nupgrades:\n  coal:\n    kind: block\n    block: coal_ore\n")
                 .build();
 
         Map<String, Integer> servers = new LinkedHashMap<>();
@@ -88,6 +91,7 @@ class OneBlockNetworkScenarioTest {
             ada.expectSidebar("Your island");
             ada.expectSidebar("Pure");
             ada.expectSidebar("Meadow 1/13");
+            assertThat(island.logLines(line -> line.contains("was from before phases"))).hasSize(1);
             assertThat(island.logLines(line -> line.contains("content.yml:")))
                     .as("every shipped block stands and every mob spawns on a real server").isEmpty();
 
