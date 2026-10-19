@@ -45,11 +45,17 @@ class ShopsScenarioTest {
             server.start();
             server.awaitLog("Shops is up", WAIT);
             server.awaitLog("The economy is up", WAIT);
+            // Loaded first: a block set in a chunk nobody has loaded is silently not set at all.
+            server.console("forceload add " + (X - 16) + " " + (Z - 16) + " " + (X + 16) + " " + (Z + 16));
+            Await.ticks(40);
+            server.console("fill " + (X - 4) + " " + Y + " " + (Z - 4) + " " + (X + 4) + " " + (Y + 4) + " "
+                    + (Z + 4) + " minecraft:air");
             server.console("fill " + (X - 4) + " " + (Y - 1) + " " + (Z - 4) + " " + (X + 4) + " " + (Y - 1) + " "
                     + (Z + 4) + " minecraft:stone");
             server.console("setblock " + X + " " + Y + " " + Z + " minecraft:chest");
             server.console("item replace block " + X + " " + Y + " " + Z
                     + " container.0 with minecraft:diamond 20");
+            assertThat(inChest(server, "diamond")).as("the chest was not set up").isEqualTo(20);
 
             Bot ada = server.bot("Ada").join();
             Bot bo = server.bot("Bo").join();
