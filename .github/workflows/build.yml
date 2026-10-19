@@ -200,6 +200,7 @@ jobs:
           fetch enchants-standalone RainsEnchants
           fetch performance-standalone RainsPerformanceOptimizer
           fetch economy-standalone RainsEconomy
+          fetch shops-standalone RainsShops
           fetch roles-standalone RainsRoles
           fetch ranks-standalone RainsRanks
           fetch jobs-standalone RainsJobs
