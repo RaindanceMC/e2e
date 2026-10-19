@@ -61,6 +61,10 @@ class ShopsScenarioTest {
             // ── Ada opens a shop: 2 diamonds for 10, buying 2 back for 4 ─────────────────────────────────────────
             standInFront(server, ada, "Ada");
             ada.hold(0);
+            // Clicked first, then the command: it takes the container clicked a moment ago.
+            ada.useOn(X, Y, Z);
+            Await.ticks(10);
+            ada.closeWindow();
             ada.run("bazaar create 10 4 2");
             ada.expectChat("Open for business");
 
