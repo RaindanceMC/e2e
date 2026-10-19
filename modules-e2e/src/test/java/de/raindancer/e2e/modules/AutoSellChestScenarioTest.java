@@ -204,6 +204,20 @@ class AutoSellChestScenarioTest {
             tester.click("Yes");
             Await.until("the chest is empty", WAIT, () -> emptied(server, 4, Y, 0));
             Await.until("and paid", WAIT, () -> balance(tester) > beforeWand);
+
+            // --- both are for sale in the shop, for what their ingredients cost ------------------------------
+            server.console("eco give Tester 1000000");
+            int wandsBefore = count(server, "minecraft:blaze_rod");
+            long beforeShop = balance(tester);
+            tester.run("shop");
+            tester.awaitWindow("Shop");
+            tester.click("Rain's items");
+            tester.awaitWindow("Rain's items");
+            assertThat(tester.window().orElseThrow().slotNamed("Auto Sell Chest")).as("the chest is on sale too").isPresent();
+            tester.click("Sell Wand");
+            Await.until("a second wand", WAIT, () -> count(server, "minecraft:blaze_rod") == wandsBefore + 1);
+            tester.closeWindow();
+            Await.until("and paid for", WAIT, () -> balance(tester) < beforeShop);
         }
     }
 }
