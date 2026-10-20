@@ -12,8 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The Crystal Wither on a real server: amethyst blocks in a wither's T with three wither skeleton skulls on top raise a
- * Crystal Wither in the shard world the moment a player places the last skull — and the same build in the overworld
- * stays a build.
+ * Crystal Wither in the shard world the moment a player places the last skull, leaf litter or snow in its lower corners
+ * or not — and the same build in the overworld stays a build.
  */
 @Tag("e2e")
 class CrystalWitherScenarioTest {
@@ -55,6 +55,9 @@ class CrystalWitherScenarioTest {
             assertThat(server.console("execute if block 0 301 0 minecraft:amethyst_block")).contains("passed");
 
             build(server, shard);
+            // What the ground has on it: leaf litter in one lower corner (found on Lilly), a snow layer in the other.
+            server.console(shard + "setblock -1 301 0 minecraft:leaf_litter");
+            server.console(shard + "setblock 1 301 0 minecraft:snow");
             lastSkull(server, builder, shard);
             assertThat(server.console(shard + "execute if entity @e[type=wither]")).as("a wither rose").contains("passed");
             assertThat(server.console(shard + "data get entity @e[type=wither,limit=1] CustomName")).contains("Crystal");
