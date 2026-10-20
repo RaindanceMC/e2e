@@ -213,6 +213,7 @@ jobs:
           fetch arena-standalone RainsArena
           fetch worldutils-bundle RainsWorldUtils
           fetch speedrun-standalone RainsSpeedrun
+          fetch network-proxy RainsNetworkProxy
           fetch speedrun-bundle RainsSpeedrunServer
           fetch yeuksmp YeukSMP
 
