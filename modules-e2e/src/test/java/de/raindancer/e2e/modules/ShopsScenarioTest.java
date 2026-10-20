@@ -63,6 +63,19 @@ class ShopsScenarioTest {
             // ── Ada sets up a shop: a diamond for 10, buying one back for 4, from both chests ───────────────────
             setUp(server, ada, "Ada");
 
+            // ── Ada, sneaking with an item frame, puts it on her stock chest — no menu in the way ───────────────
+            server.console("give Ada minecraft:item_frame 1");
+            server.console("tp Ada " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
+            Await.ticks(20);
+            ada.hold(ada.hotbarSlotOf(item -> item.material().toLowerCase().contains("item_frame")));
+            ada.sneak(true);
+            ada.useOn(X, Y, Z);
+            Await.ticks(20);
+            ada.sneak(false);
+            assertThat(ada.window()).as("a menu opened instead of placing the frame").isEmpty();
+            assertThat(server.console("execute if entity @e[type=minecraft:item_frame]")).as("the frame is on the chest")
+                    .contains("passed");
+
             // ── Bo buys one at the shopkeeper ───────────────────────────────────────────────────────────────────
             UUID keeper = mannequin(server);
             server.console("tp Bo " + (X + 1) + ".5 " + Y + " " + (Z + 4) + ".5 180 0");
