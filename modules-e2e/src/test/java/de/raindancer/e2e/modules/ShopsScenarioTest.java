@@ -123,6 +123,11 @@ class ShopsScenarioTest {
             ada.interact(keeper);
             assertThat(slot(ada, "Offer the item in your hand")).isNotNegative();
             ada.sneak(false);
+
+            // ── and paints its name with Core's style editor ────────────────────────────────────────────────────
+            ada.rightClickSlot(slot(ada, "Name:"));
+            Await.until("the style editor opened", WAIT, () -> ada.window()
+                    .map(window -> window.title().contains("Paint")).orElse(false));
             ada.closeWindow();
 
             assertThat(errors(server)).isEmpty();
@@ -156,12 +161,10 @@ class ShopsScenarioTest {
         owner.clickSlot(slot(owner, "Offer the item in your hand"));
         owner.expectChat("New offer");
         owner.clickSlot(slot(owner, "Selling price"));
-        owner.expectChat("selling price");
-        owner.say("10");
+        owner.typeInAnvil("10");
         owner.expectChat("Done");
         owner.clickSlot(slot(owner, "Buying price"));
-        owner.expectChat("buying price");
-        owner.say("4");
+        owner.typeInAnvil("4");
         owner.expectChat("Done");
         owner.clickSlot(slot(owner, "Link stock chests"));
         owner.expectChat("Linking chests");
