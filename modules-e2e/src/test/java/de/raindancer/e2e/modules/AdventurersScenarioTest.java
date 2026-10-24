@@ -195,6 +195,131 @@ class AdventurersScenarioTest {
             cid.hold(0).useHeld();
             cid.expectChat("already raging");
 
+            // --- staff hands out experience, and a new class starts again at level 1 --------------------------------
+            server.console("adventurer admin xp Bo 6500");
+            bo.expectTitle("Level 5");
+            swapHands(bo);
+            Await.until("Bo's hotbar is back", WAIT, () -> noIcons(bo));
+            bo.runAndOpen("adventurer class", "Choose");
+            bo.click("Fighter");
+            bo.awaitWindow("Become");
+            bo.click("Yes, do it");
+            bo.expectChat("You are a Fighter now");
+            bo.awaitWindow("Character");
+            Await.until("the sheet says level 1", WAIT, () -> bo.window().map(window -> window.slotNamed(
+                    "Level 1 Fighter").isPresent()).orElse(false));
+            bo.closeWindow();
+
+            assertThat(server.paper.errorsFrom("RainsCore", "RainsAdventurers")).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("a sorcerer chooses Wild Magic; all hundred surges run clean; potion, scroll and wand work; a kill drops loot")
+    void wildMagicAndItems() {
+        try (Server server = Server.start("adventurers-wild", List.of("dnd-standalone:RainsAdventurers-.*"),
+                List.of(), java.util.Map.of("plugins/RainsAdventurers/config.yml", "loot-percent: 1000\n"),
+                List.of("Adventurers are up"))) {
+            Bot dee = server.player("Dee");
+            server.console("forceload add -32 -32 32 32");
+            server.console("fill -24 63 -24 24 63 24 minecraft:stone");
+            server.console("fill -24 64 -24 24 80 24 minecraft:air");
+            server.console("gamerule doMobSpawning false");
+            server.console("gamerule doImmediateRespawn true");
+            server.console("kill @e[type=!minecraft:player]");
+            server.console("time set day");
+            server.console("gamemode survival Dee");
+            server.console("tp Dee 0.5 64 0.5 0 0");
+            server.console("clear Dee");
+
+            // --- a sorcerer, and the origin chosen from the sheet ------------------------------------------------
+            dee.runAndOpen("adventurer", "Choose");
+            dee.click("Sorcerer");
+            dee.expectChat("You are a Sorcerer now");
+            dee.awaitWindow("Character");
+            dee.expectChat("origin to choose");
+            dee.click("Choose your origin");
+            dee.awaitWindow("Choose");
+            dee.click("Wild Magic");
+            dee.awaitWindow("Become");
+            dee.click("Yes, do it");
+            dee.expectChat("Your origin: Wild Magic");
+            dee.closeWindow();
+
+            // --- every entry of the surge table, on a real server --------------------------------------------------
+            server.console("adventurer admin level Dee 20");
+            dee.expectTitle("Level 20");
+            for (int roll = 1; roll <= 100; roll++) {
+                server.console("effect give Dee minecraft:resistance 60 4 true");
+                server.console("effect give Dee minecraft:instant_health 1 5 true");
+                server.console("tp Dee 0.5 64 0.5 0 0");
+                server.console("adventurer admin surge Dee " + roll);
+                Await.ticks(4);
+            }
+            Await.until("the last surge was announced", WAIT, () -> dee.chatText().stream()
+                    .anyMatch(line -> line.contains("Wild Magic Surge!") && line.contains("(100)")));
+            assertThat(dee.chatText().stream().filter(line -> line.contains("Wild Magic Surge!")).count())
+                    .as("all hundred surges were announced").isGreaterThanOrEqualTo(100);
+            server.console("effect clear Dee");
+            Await.ticks(40);
+            assertThat(server.paper.errorsFrom("RainsCore", "RainsAdventurers"))
+                    .as("no surge throws on a real server").isEmpty();
+            Await.until("everything the surges summoned is gone again", Duration.ofSeconds(80), () -> server
+                    .console("execute if entity @e[nbt={PublicBukkitValues:{\"rains_dnd:summoned\":1b}}]")
+                    .contains("failed"));
+
+            // --- a healing potion -------------------------------------------------------------------------------
+            if (!dee.isDead()) {
+                server.console("kill Dee");
+            }
+            dee.respawn();
+            Await.until("alive", WAIT, () -> !dee.isDead());
+            server.console("tp Dee 0.5 64 0.5 0 0");
+            server.console("clear Dee");
+            server.console("adventurer admin give Dee potion_of_supreme_healing");
+            dee.expectItem("a potion", item -> item.name().contains("Supreme Healing"));
+            Await.ticks(80);
+            float full = dee.health();
+            server.console("damage Dee 20 minecraft:generic");
+            Await.until("hurt", WAIT, () -> dee.health() < full - 10);
+            float hurt = dee.health();
+            dee.hold(dee.hotbarSlotOf(item -> item.name().contains("Supreme Healing"))).useHeld();
+            Await.until("the potion healed Dee", WAIT, () -> dee.health() > hurt + 5);
+            dee.expectChat("The potion mends you");
+
+            // --- a scroll and a wand at a zombie -----------------------------------------------------------------
+            server.console("summon minecraft:zombie 0.5 64 6.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,"
+                    + "Health:200f,attributes:[{id:\"minecraft:max_health\",base:200}],Tags:[\"dummy\"]}");
+            Await.ticks(10);
+            dee.look(0, 10);
+            server.console("adventurer admin give Dee spell_scroll magic_missile");
+            dee.expectItem("a scroll", item -> item.name().contains("Spell Scroll of Magic Missile"));
+            dee.hold(dee.hotbarSlotOf(item -> item.name().contains("Spell Scroll"))).useHeld();
+            dee.expectChat("crumbles to dust");
+            Await.ticks(30);
+            server.console("adventurer admin give Dee wand_of_magic_missiles");
+            dee.expectItem("a wand", item -> item.name().contains("Wand of Magic Missiles"));
+            dee.hold(dee.hotbarSlotOf(item -> item.name().contains("Wand"))).useHeld();
+            Await.until("the wand spent a charge", WAIT, () -> dee.items().stream().filter(Objects::nonNull)
+                    .anyMatch(item -> item.name().contains("Wand") && item.lore().stream()
+                            .anyMatch(line -> line.contains("Charges: 6 of 7"))));
+            server.console("kill @e[type=minecraft:zombie,tag=dummy]");
+
+            // --- a kill by an adventurer drops a magic item --------------------------------------------------------
+            server.console("summon minecraft:iron_golem 0.5 64 5.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,"
+                    + "Health:1f,PlayerCreated:0b}");
+            Await.ticks(10);
+            server.console("clear Dee");
+            server.console("adventurer admin level Dee 1");
+            dee.hold(0);
+            swapHands(dee);
+            Await.until("in the stance", WAIT, () -> hotbarHas(dee, 0, "Fire Bolt"));
+            Await.until("the golem falls and drops loot", Duration.ofSeconds(60), () -> {
+                dee.hold(0).useHeld();
+                Await.ticks(30);
+                return dee.chatText().stream().anyMatch(line -> line.contains("Loot!"));
+            });
+
             assertThat(server.paper.errorsFrom("RainsCore", "RainsAdventurers")).isEmpty();
         }
     }
