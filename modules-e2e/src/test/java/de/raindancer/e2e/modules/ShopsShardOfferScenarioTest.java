@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,18 +47,23 @@ class ShopsShardOfferScenarioTest {
             server.console("gamemode survival Ada");
             server.console("clear Ada");
             server.console("give Ada thor_shard 1");
-            server.console("tp Ada " + (X + 1) + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
+            server.console("summon minecraft:item_frame " + X + ".5 " + Y + ".5 " + (Z + 1) + ".03 {Facing:3b,block_pos:[I;"
+                    + X + "," + Y + "," + (Z + 1) + "]}");
+            server.console("setblock " + (X + 1) + " " + Y + " " + Z + " minecraft:oak_wall_sign[facing=east]");
+            server.console("tp Ada " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
             Await.ticks(20);
+            UUID frame = ShopsScenarioTest.frame(server);
+            Await.until("Ada sees the frame", WAIT, () -> ada.sees(frame));
             ada.hold(0);
-            ada.run("bazaar create Shard Corner");
-            ada.expectChat("is open");
-            ada.clickSlot(ShopsScenarioTest.slot(ada, "Offer the item in your hand"));
-            ada.expectChat("New offer: Thor Shard");
-            ada.closeWindow();
+            ada.interact(frame);
+            Await.until("the shard is in the frame", WAIT, () -> server.console(
+                    "data get entity @e[type=minecraft:item_frame,limit=1] Item").contains("id"));
+            server.console("tp Ada " + (X + 2) + ".5 " + Y + " " + (Z + 2) + ".5 135 20");
+            Await.ticks(20);
+            ShopsScenarioTest.writeSign(ada, X + 1, Y, Z, "[market]", "50", "", "");
+            ada.expectChat("Thor Shard is open for business");
 
-            ada.run("bazaar mine");
-            ada.clickSlot(ShopsScenarioTest.slot(ada, "Shard Corner"));
-            ada.clickSlot(ShopsScenarioTest.slot(ada, "Offers"));
+            ada.run("market mine");
             assertThat(ShopsScenarioTest.slot(ada, "Thor Shard")).isNotNegative();
             ada.closeWindow();
 

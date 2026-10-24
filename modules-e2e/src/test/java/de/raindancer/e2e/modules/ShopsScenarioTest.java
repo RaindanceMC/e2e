@@ -19,23 +19,24 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Players' shops on a real server, with RainsEconomy paying: a shop is set up where its owner stands, its shopkeeper
- * gets an offer, the offer is priced and two stock chests are linked to it; a customer buys and sells at the
- * shopkeeper, cannot open, break or drain the stock chests, buys from the second chest once the first is empty, and
- * buys from afar through the bazaar, which finds the offer by what it sells.
+ * Chest shops on a real server, with RainsEconomy paying: an item frame showing a diamond hangs on a chest, its owner
+ * writes a {@code [market]} sign on it, and the chest is a shop — the sign rewritten and waxed, the frame fixed, the
+ * item and price floating over it. A customer buys and sells at the frame and at the chest, cannot open, break or
+ * drain the chest or break the sign, and buys from afar through /market, which finds the shop by what it sells. The
+ * owner switches a floating line off in the back room, and breaking the sign ends the shop.
  */
 @Tag("e2e")
 class ShopsScenarioTest {
 
     private static final Duration WAIT = Duration.ofSeconds(90);
 
-    /** The first stock chest, on a platform out of everybody's way; the second stands two blocks east. */
+    /** The shop's chest, on a platform out of everybody's way; a plain chest stands two blocks east. */
     private static final int X = 8;
     private static final int Y = 120;
     private static final int Z = 8;
 
     @Test
-    @DisplayName("set up a shop, link two chests, trade at the shopkeeper and from afar; stock stays the shop's")
+    @DisplayName("a chest, a frame, a [market] sign: trade at it and from afar; it stays the shop's; the sign ends it")
     void shops() throws Exception {
         Path economy = OneBlockNetworkScenarioTest.jar("economy-standalone", "RainsEconomy-.*");
         Path shops = OneBlockNetworkScenarioTest.jar("shops-standalone", "RainsShops-.*");
@@ -60,10 +61,8 @@ class ShopsScenarioTest {
             server.console("gamemode survival Bo");
             server.console("eco give Bo 1000");
 
-            // ── Ada sets up a shop: a diamond for 10, buying one back for 4, from both chests ───────────────────
-            setUp(server, ada, "Ada");
-
-            // ── Ada, sneaking with an item frame, puts it on her stock chest — no menu in the way ───────────────
+            // ── Ada, sneaking with an item frame, puts it on her chest — the game places it ─────────────────────
+            server.console("clear Ada");
             server.console("give Ada minecraft:item_frame 1");
             server.console("tp Ada " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
             Await.ticks(20);
@@ -72,16 +71,26 @@ class ShopsScenarioTest {
             ada.useOn(X, Y, Z);
             Await.ticks(20);
             ada.sneak(false);
-            assertThat(ada.window()).as("a menu opened instead of placing the frame").isEmpty();
             assertThat(server.console("execute if entity @e[type=minecraft:item_frame]")).as("the frame is on the chest")
                     .contains("passed");
+            server.console("kill @e[type=minecraft:item_frame]");
+            Await.ticks(5);
 
-            // ── Bo buys one at the shopkeeper ───────────────────────────────────────────────────────────────────
-            UUID keeper = mannequin(server);
-            server.console("tp Bo " + (X + 1) + ".5 " + Y + " " + (Z + 4) + ".5 180 0");
-            Await.until("Bo sees the shopkeeper", WAIT, () -> bo.sees(keeper));
-            bo.interact(keeper);
-            bo.clickSlot(slot(bo, "Diamond"));
+            // ── Ada sets up her shop: a diamond for 10, buying one back for 4 ───────────────────────────────────
+            setUp(server, ada, "Ada");
+            assertThat(server.console("data get block " + (X + 1) + " " + Y + " " + Z + " front_text.messages[0]"))
+                    .as("the sign says what the shop is").contains("Market");
+            assertThat(server.console("data get entity @e[type=minecraft:item_frame,limit=1] Fixed"))
+                    .as("the frame is fixed").contains("1b");
+            Await.until("the item and price float over the chest", WAIT, () -> server.console(
+                    "execute if entity @e[type=minecraft:text_display]").contains("passed")
+                    && server.console("execute if entity @e[type=minecraft:item_display]").contains("passed"));
+
+            // ── Bo buys one at the frame ────────────────────────────────────────────────────────────────────────
+            UUID frame = frame(server);
+            server.console("tp Bo " + X + ".5 " + Y + " " + (Z + 3) + ".5 180 0");
+            Await.until("Bo sees the frame", WAIT, () -> bo.sees(frame));
+            bo.interact(frame);
             bo.clickSlot(slot(bo, "Buy one bundle"));
             bo.expectChat("Bought 1× Diamond");
             Await.until("a diamond reached Bo", WAIT, () -> carried(server, "Bo", "diamond") == 1);
@@ -91,57 +100,77 @@ class ShopsScenarioTest {
             // ── and sells it back ───────────────────────────────────────────────────────────────────────────────
             bo.clickSlot(slot(bo, "Sell one bundle"));
             bo.expectChat("Sold 1× Diamond");
-            Await.until("Bo's diamond went into the stock", WAIT, () -> carried(server, "Bo", "diamond") == 0);
-            assertThat(inChest(server, X, "diamond") + inChest(server, X + 2, "diamond")).isEqualTo(20);
+            Await.until("Bo's diamond went into the chest", WAIT, () -> carried(server, "Bo", "diamond") == 0);
+            assertThat(inChest(server, X, "diamond")).isEqualTo(20);
             bo.closeWindow();
 
-            // ── the stock chests are the shop's: not opened, not broken, not drained ────────────────────────────
+            // ── the chest is the shop's: clicking it is the counter; not broken, not drained; the sign stays ───
             server.console("tp Bo " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
             Await.ticks(20);
             bo.useOn(X, Y, Z);
-            bo.expectChat("stock");
-            assertThat(bo.window()).as("Bo opened a stock chest").isEmpty();
+            assertThat(slot(bo, "Buy one bundle")).as("the chest is the counter for a customer").isNotNegative();
+            bo.closeWindow();
             bo.dig(X, Y, Z);
             Await.ticks(60);
             assertThat(server.console("execute if block " + X + " " + Y + " " + Z + " minecraft:chest"))
-                    .as("Bo broke a stock chest").contains("passed");
+                    .as("Bo broke the shop's chest").contains("passed");
+            bo.dig(X + 1, Y, Z);
+            Await.ticks(60);
+            assertThat(server.console("execute if block " + (X + 1) + " " + Y + " " + Z + " minecraft:oak_wall_sign"))
+                    .as("Bo broke the shop's sign").contains("passed");
             server.console("setblock " + X + " " + (Y - 1) + " " + Z + " minecraft:hopper");
             Await.ticks(100);
             assertThat(server.console("data get block " + X + " " + (Y - 1) + " " + Z + " Items"))
-                    .as("a hopper drained a stock chest").doesNotContain("diamond");
+                    .as("a hopper drained the shop's chest").doesNotContain("diamond");
+            server.console("setblock " + X + " " + (Y - 1) + " " + Z + " minecraft:stone");
 
-            // ── the first chest empty: the second sells; and from afar, through the bazaar ──────────────────────
-            server.console("data merge block " + X + " " + Y + " " + Z + " {Items:[]}");
-            server.console("data merge block " + (X + 2) + " " + Y + " " + Z + " {Items:[]}");
-            server.console("item replace block " + (X + 2) + " " + Y + " " + Z
-                    + " container.0 with minecraft:diamond 3");
+            // ── from afar, through /market ──────────────────────────────────────────────────────────────────────
             server.console("tp Bo " + (X + 40) + " " + Y + " " + Z);
             Await.ticks(40);
-            bo.run("bazaar diamond");
+            bo.run("market diamond");
             bo.clickSlot(slot(bo, "Diamond"));
             bo.clickSlot(slot(bo, "Buy one bundle"));
             bo.expectChat("Bought 1× Diamond");
             Await.until("bought from afar", WAIT, () -> carried(server, "Bo", "diamond") == 1);
-            assertThat(inChest(server, X + 2, "diamond")).isEqualTo(2);
+            assertThat(inChest(server, X, "diamond")).isEqualTo(19);
             bo.closeWindow();
-            bo.run("bazaar netherite");
+            bo.run("market netherite");
             assertThat(slot(bo, "Nothing found")).isNotNegative();
             bo.closeWindow();
 
-            // ── Ada, sneaking, gets her shop's own page from the shopkeeper ─────────────────────────────────────
-            server.console("tp Ada " + (X + 1) + ".5 " + Y + " " + (Z + 4) + ".5 180 0");
-            Await.until("Ada sees the shopkeeper", WAIT, () -> ada.sees(keeper));
+            // ── Ada, sneaking with an empty hand at her chest, gets the back room and stops the price floating ──
+            server.console("tp Ada " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
+            server.console("clear Ada");
+            Await.ticks(20);
             ada.sneak(true);
             Await.ticks(5);
-            ada.interact(keeper);
-            assertThat(slot(ada, "Offer the item in your hand")).isNotNegative();
+            ada.useOn(X, Y, Z);
+            ada.clickSlot(slot(ada, "What floats over the chest"));
+            ada.clickSlot(slot(ada, "Item"));
+            ada.clickSlot(slot(ada, "Price"));
+            ada.clickSlot(slot(ada, "Name"));
             ada.sneak(false);
-
-            // ── and paints its name with Core's style editor ────────────────────────────────────────────────────
-            ada.rightClickSlot(slot(ada, "Name:"));
-            Await.until("the style editor opened", WAIT, () -> ada.window()
-                    .map(window -> window.title().contains("Paint")).orElse(false));
             ada.closeWindow();
+            Await.until("nothing floats any more", WAIT, () -> !server.console(
+                    "execute if entity @e[type=minecraft:text_display]").contains("passed")
+                    && !server.console("execute if entity @e[type=minecraft:item_display]").contains("passed"));
+
+            // ── and breaking the sign ends the shop; the frame is let go, the chest keeps its stock ─────────────
+            // In creative: a bot's dig is instant, and a survival player cannot break a sign in no time.
+            server.console("gamemode creative Ada");
+            Await.ticks(10);
+            ada.dig(X + 1, Y, Z);
+            ada.expectChat("is closed");
+            Await.ticks(20);
+            assertThat(server.console("data get entity @e[type=minecraft:item_frame,limit=1] Fixed"))
+                    .as("the frame is let go").contains("0b");
+            assertThat(inChest(server, X, "diamond")).isEqualTo(19);
+            server.console("tp Bo " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
+            Await.ticks(20);
+            bo.useOn(X, Y, Z);
+            Await.until("a chest again: Bo opens it", WAIT, () -> bo.window().map(window -> !window.title()
+                    .contains("Diamond")).orElse(false));
+            bo.closeWindow();
 
             assertThat(errors(server)).isEmpty();
         } finally {
@@ -149,49 +178,37 @@ class ShopsScenarioTest {
         }
     }
 
-    /** Air above stone, and the two chests. */
+    /** Air above stone, the shop's chest and a plain one two blocks east. */
     static void platform(PaperServer server) {
         server.console("fill " + (X - 4) + " " + Y + " " + (Z - 4) + " " + (X + 6) + " " + (Y + 4) + " "
                 + (Z + 6) + " minecraft:air");
         server.console("fill " + (X - 4) + " " + (Y - 1) + " " + (Z - 4) + " " + (X + 6) + " " + (Y - 1) + " "
                 + (Z + 6) + " minecraft:stone");
-        server.console("setblock " + X + " " + Y + " " + Z + " minecraft:chest");
-        server.console("setblock " + (X + 2) + " " + Y + " " + Z + " minecraft:chest");
+        server.console("setblock " + X + " " + Y + " " + Z + " minecraft:chest[facing=south]");
+        server.console("setblock " + (X + 2) + " " + Y + " " + Z + " minecraft:chest[facing=south]");
     }
 
     /**
-     * The owner sets up "Gem Corner" standing between the chests, offers the diamond in their hand at 10, buying at 4,
-     * links both chests and opens the offer.
+     * The owner's chest shop at the chest at X: an item frame showing a diamond on its south side and a sign on its
+     * east side, written {@code [market] / B 10 S 4} by the owner as a player writes one.
      */
     static void setUp(PaperServer server, Bot owner, String name) {
+        server.console("summon minecraft:item_frame " + X + ".5 " + Y + ".5 " + (Z + 1) + ".03 {Facing:3b,block_pos:[I;"
+                + X + "," + Y + "," + (Z + 1) + "],Item:{id:\"minecraft:diamond\",count:1}}");
+        server.console("setblock " + (X + 1) + " " + Y + " " + Z + " minecraft:oak_wall_sign[facing=east]");
         server.console("clear " + name);
-        server.console("give " + name + " minecraft:diamond 1");
-        server.console("tp " + name + " " + (X + 1) + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
+        server.console("tp " + name + " " + (X + 2) + ".5 " + Y + " " + (Z + 2) + ".5 135 20");
         Await.ticks(20);
-        owner.hold(0);
-        owner.run("bazaar create Gem Corner");
-        owner.expectChat("is open");
-        owner.clickSlot(slot(owner, "Offer the item in your hand"));
-        owner.expectChat("New offer");
-        owner.clickSlot(slot(owner, "Selling price"));
-        owner.typeInAnvil("10");
-        owner.expectChat("Done");
-        owner.clickSlot(slot(owner, "Buying price"));
-        owner.typeInAnvil("4");
-        owner.expectChat("Done");
-        owner.clickSlot(slot(owner, "Link stock chests"));
-        owner.expectChat("Linking chests");
-        owner.look(180, 30);
-        owner.useOn(X, Y, Z);
-        owner.expectChat("(1/");
-        owner.useOn(X + 2, Y, Z);
-        owner.expectChat("(2/");
-        owner.run("bazaar done");
-        owner.expectChat("sells from 2 chest");
-        owner.clickSlot(slot(owner, "Paused"));
-        owner.expectChat("Done");
-        assertThat(slot(owner, "Open")).isNotNegative();
-        owner.closeWindow();
+        writeSign(owner, X + 1, Y, Z, "[market]", "B 10 S 4", "", "");
+        owner.expectChat("is open for business");
+    }
+
+    /** Opens the sign at x y z for editing and sends its lines, as a player's client does. */
+    static void writeSign(Bot writer, int x, int y, int z, String... lines) {
+        writer.useOn(x, y, z);
+        Await.ticks(10);
+        writer.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundSignUpdatePacket(
+                org.cloudburstmc.math.vector.Vector3i.from(x, y, z), List.of(lines), true));
     }
 
     /** What a player carries, as the server counts it; {@code clear} with a count of 0 takes nothing. */
@@ -213,11 +230,11 @@ class ShopsScenarioTest {
         return total;
     }
 
-    /** The one Mannequin on the server, by the four ints {@code data get} prints its UUID as. */
-    static UUID mannequin(PaperServer server) {
-        String said = server.console("data get entity @e[type=minecraft:mannequin,limit=1] UUID");
+    /** The one item frame on the server, by the four ints {@code data get} prints its UUID as. */
+    static UUID frame(PaperServer server) {
+        String said = server.console("data get entity @e[type=minecraft:item_frame,limit=1] UUID");
         Matcher ints = Pattern.compile("\\[I;\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+)]").matcher(said);
-        assertThat(ints.find()).as("no shopkeeper: " + said).isTrue();
+        assertThat(ints.find()).as("no item frame: " + said).isTrue();
         long most = ((long) Integer.parseInt(ints.group(1)) << 32) | (Integer.parseInt(ints.group(2)) & 0xffffffffL);
         long least = ((long) Integer.parseInt(ints.group(3)) << 32) | (Integer.parseInt(ints.group(4)) & 0xffffffffL);
         return new UUID(most, least);

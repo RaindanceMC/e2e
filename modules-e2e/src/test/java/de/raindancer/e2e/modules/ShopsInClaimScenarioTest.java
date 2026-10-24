@@ -15,9 +15,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A shop inside somebody's claim: a stranger, trusted with nothing there, still gets the shop's page from its
- * shopkeeper and trades there — without Core's land protection telling them first that they may not — and clicking a
- * stock chest tells them where to buy rather than refusing them.
+ * A chest shop inside somebody's claim: a stranger, trusted with nothing there, still gets the counter from its item
+ * frame and from its chest and trades there — without Core's land protection telling them first that they may not.
  */
 @Tag("e2e")
 class ShopsInClaimScenarioTest {
@@ -28,7 +27,7 @@ class ShopsInClaimScenarioTest {
     private static final int Z = 8;
 
     @Test
-    @DisplayName("a stranger trades at a shopkeeper in somebody else's claim, and is never refused out loud")
+    @DisplayName("a stranger trades at a chest shop in somebody else's claim, and is never refused out loud")
     void inAClaim() throws Exception {
         Path claims = OneBlockNetworkScenarioTest.jar("claims-standalone", "RainsExtendedClaims-.*");
         Path economy = OneBlockNetworkScenarioTest.jar("economy-standalone", "RainsEconomy-.*");
@@ -68,26 +67,26 @@ class ShopsInClaimScenarioTest {
             ada.say("market");
             ada.expectChat("Claimed");
 
-            // ── a shop in it, selling from both chests ──────────────────────────────────────────────────────────
+            // ── a chest shop in it ──────────────────────────────────────────────────────────────────────────────
             ShopsScenarioTest.setUp(server, ada, "Ada");
 
-            // ── Bo, trusted with nothing here, buys at the shopkeeper ───────────────────────────────────────────
-            UUID keeper = ShopsScenarioTest.mannequin(server);
-            server.console("tp Bo " + (X + 1) + ".5 " + Y + " " + (Z + 4) + ".5 180 0");
-            Await.until("Bo sees the shopkeeper", WAIT, () -> bo.sees(keeper));
+            // ── Bo, trusted with nothing here, buys at the item frame ───────────────────────────────────────────
+            UUID frame = ShopsScenarioTest.frame(server);
+            server.console("tp Bo " + X + ".5 " + Y + " " + (Z + 3) + ".5 180 0");
+            Await.until("Bo sees the frame", WAIT, () -> bo.sees(frame));
             bo.forgetChat();
-            bo.interact(keeper);
-            bo.clickSlot(ShopsScenarioTest.slot(bo, "Diamond"));
+            bo.interact(frame);
             bo.clickSlot(ShopsScenarioTest.slot(bo, "Buy one bundle"));
             bo.expectChat("Bought 1× Diamond");
             Await.until("a diamond reached Bo", WAIT, () -> ShopsScenarioTest.carried(server, "Bo", "diamond") == 1);
             bo.closeWindow();
 
-            // ── a stock chest tells him where to buy ────────────────────────────────────────────────────────────
+            // ── and the chest is the counter too ────────────────────────────────────────────────────────────────
             server.console("tp Bo " + X + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
             Await.ticks(20);
             bo.useOn(X, Y, Z);
-            bo.expectChat("stock");
+            assertThat(ShopsScenarioTest.slot(bo, "Buy one bundle")).isNotNegative();
+            bo.closeWindow();
 
             Await.ticks(20);
             assertThat(bo.chatText()).as("Bo was refused out loud on the way")

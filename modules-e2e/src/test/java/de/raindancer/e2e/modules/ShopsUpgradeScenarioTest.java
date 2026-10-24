@@ -17,9 +17,9 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * From the 0.1 chest shops to 0.2.0 on one server: a chest shop and a statue made with 0.1.2 (what Lilly runs), the
+ * From the 0.1 chest shops to today's on one server: a chest shop and a statue made with 0.1.2 (what Lilly runs), the
  * plugin swapped, the server started again — the old shop is closed and its owner told when they come back, the
- * statue is gone, the chest is a chest again with everything still in it, and the owner sets up a new shop.
+ * statue is gone, the chest is a chest again with everything still in it, and the owner sets up a new chest shop.
  */
 @Tag("e2e")
 class ShopsUpgradeScenarioTest {
@@ -30,7 +30,7 @@ class ShopsUpgradeScenarioTest {
     private static final int Z = 8;
 
     @Test
-    @DisplayName("0.1.2 chest shop and statue → 0.2.0: closed, owner told, statue gone, stock kept, new shop works")
+    @DisplayName("0.1.2 chest shop and statue → now: closed, owner told, statue gone, stock kept, new shop works")
     void upgrade() throws Exception {
         Path rainscore = Path.of(System.getProperty("e2e.rainscore"));
         // …/repository/de/raindancer/RainsCore/<version>/RainsCore-<version>.jar → …/repository
@@ -97,13 +97,10 @@ class ShopsUpgradeScenarioTest {
             bo.closeWindow();
             assertThat(ShopsScenarioTest.inChest(server, X, "diamond")).isEqualTo(20);
 
-            // ── and a new shop is set up the new way ────────────────────────────────────────────────────────────
+            // ── and a new chest shop is set up the new way ──────────────────────────────────────────────────────
             server.console("gamemode survival Ada");
-            server.console("tp Ada " + (X + 1) + ".5 " + Y + " " + (Z + 2) + ".5 180 30");
-            Await.ticks(20);
-            back.run("bazaar create Gem Corner");
-            back.expectChat("is open");
-            assertThat(server.console("execute if entity @e[type=minecraft:mannequin]")).contains("passed");
+            ShopsScenarioTest.setUp(server, back, "Ada");
+            assertThat(server.console("execute if entity @e[type=minecraft:mannequin]")).doesNotContain("passed");
 
             assertThat(server.errorsFrom("RainsShops", "RainsCore", "RainsEconomy").stream()
                     .filter(line -> !line.contains("resource pack server could not start"))).isEmpty();
