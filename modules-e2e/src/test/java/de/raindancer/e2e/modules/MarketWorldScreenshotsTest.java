@@ -26,7 +26,7 @@ class MarketWorldScreenshotsTest {
     private static final Duration WAIT = Duration.ofSeconds(120);
 
     @Test
-    @DisplayName("square, fountain, market street, stall, house row, night, from above — photographed")
+    @DisplayName("square, fountain, market street, stall, house rows, from above, a plot — photographed")
     void screenshots() {
         Path economy = OneBlockNetworkScenarioTest.jar("economy-standalone", "RainsEconomy-.*");
         Path shops = OneBlockNetworkScenarioTest.jar("shops-standalone", "RainsShops-.*");
@@ -40,8 +40,6 @@ class MarketWorldScreenshotsTest {
             assertThat(server.console("settings set market-world true")).contains("is now");
             server.awaitLog("The market world 'market' is open", WAIT);
             server.console("execute in minecraft:market run forceload add -40 -40 160 110");
-            server.console("execute in minecraft:market run time set 1000");
-            server.console("execute in minecraft:market run gamerule doDaylightCycle false");
             Await.ticks(100);
 
             try (RealClient viewer = RealClient.join(server, "Viewer", 10)) {
@@ -60,11 +58,7 @@ class MarketWorldScreenshotsTest {
                 shot(server, viewer, shots, "market-13-jetty-close", 71.2, 66.2, 40, -55, -22);
                 shot(server, viewer, shots, "market-14-end-wall", 72, 67, 27.5, -20, -8);
                 shot(server, viewer, shots, "market-15-facades-other-side", 72.5, 66.8, 37, 40, -6);
-                server.console("execute in minecraft:market run time set 18000");
-                shot(server, viewer, shots, "market-8-night-street", 76, 67.2, 29.5, -90, 6);
-                shot(server, viewer, shots, "market-9-night-houses", 69.5, 68, 30, 0, 4);
                 // Standing on a free plot: the action bar says so, and /market plot offers it.
-                server.console("execute in minecraft:market run time set 1000");
                 server.console("gamemode survival Viewer");
                 server.console("execute in minecraft:market run tp Viewer 86.5 65 21.5 0 20");
                 Await.ticks(60);

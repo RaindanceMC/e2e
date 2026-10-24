@@ -134,6 +134,31 @@ class ShopsScenarioTest {
             Await.until("bought from afar", WAIT, () -> carried(server, "Bo", "diamond") == 1);
             assertThat(inChest(server, X, "diamond")).isEqualTo(19);
             bo.closeWindow();
+            // ── buying and selling from afar switch off each on its own ─────────────────────────────────────────
+            assertThat(server.console("settings set remote-buying false")).contains("is now");
+            bo.run("market sell diamond");
+            bo.clickSlot(slot(bo, "Diamond"));
+            assertThat(lore(bo, "Buy one bundle")).as("buying from afar is off, and the button says so")
+                    .contains("Buying from afar");
+            bo.forgetChat();
+            bo.clickSlot(slot(bo, "Sell one bundle"));
+            bo.expectChat("Sold 1× Diamond");
+            Await.until("Bo sold his diamond from afar", WAIT, () -> carried(server, "Bo", "diamond") == 0);
+            bo.closeWindow();
+            assertThat(server.console("settings set remote-buying true")).contains("is now");
+            assertThat(server.console("settings set remote-selling false")).contains("is now");
+            bo.run("market diamond");
+            bo.clickSlot(slot(bo, "Diamond"));
+            bo.forgetChat();
+            bo.clickSlot(slot(bo, "Buy one bundle"));
+            bo.expectChat("Bought 1× Diamond");
+            Await.until("Bo bought one from afar", WAIT, () -> carried(server, "Bo", "diamond") == 1);
+            assertThat(lore(bo, "Sell one bundle")).as("selling from afar is off, and the button says so")
+                    .contains("Selling from afar");
+            bo.closeWindow();
+            assertThat(server.console("settings set remote-selling true")).contains("is now");
+            assertThat(inChest(server, X, "diamond")).isEqualTo(19);
+            Await.ticks(20);
             bo.run("market netherite");
             assertThat(slot(bo, "Nothing found")).isNotNegative();
             bo.closeWindow();
@@ -228,6 +253,12 @@ class ShopsScenarioTest {
             total += Integer.parseInt(stack.group(1) != null ? stack.group(1) : stack.group(2));
         }
         return total;
+    }
+
+    /** The lore of the button with this label on the page the bot has open, as one line. */
+    static String lore(Bot bot, String label) {
+        int at = slot(bot, label);
+        return String.join(" ", bot.window().orElseThrow().items().get(at).lore());
     }
 
     /** The one item frame on the server, by the four ints {@code data get} prints its UUID as. */

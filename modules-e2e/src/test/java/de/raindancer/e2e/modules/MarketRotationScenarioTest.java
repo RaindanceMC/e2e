@@ -90,6 +90,16 @@ class MarketRotationScenarioTest {
             ShopsScenarioTest.writeSign(ada, 87, 65, 21, "[market]", "10", "", "Gems");
             ada.expectChat("is open for business");
 
+            // ── no mob comes into being there, not even from an egg on one's own plot ───────────────────────────
+            server.console("give Ada minecraft:zombie_spawn_egg 1");
+            server.console("execute in minecraft:market run tp Ada 90.5 65 17.5 0 60");
+            Await.ticks(20);
+            ada.hold(ada.hotbarSlotOf(item -> item.material().toLowerCase().contains("zombie_spawn_egg")));
+            ada.useOn(90, 64, 18);
+            Await.ticks(40);
+            assertThat(server.console("execute in minecraft:market if entity @e[type=minecraft:zombie,x=90,y=65,z=18,distance=..40]"))
+                    .as("a zombie hatched in the market").doesNotContain("passed");
+
             // ── the stalls rotate ───────────────────────────────────────────────────────────────────────────────
             server.console("op Ada");
             Await.ticks(10);
