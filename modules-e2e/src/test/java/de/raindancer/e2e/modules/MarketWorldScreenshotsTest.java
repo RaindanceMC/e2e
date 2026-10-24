@@ -56,6 +56,10 @@ class MarketWorldScreenshotsTest {
                 shot(server, viewer, shots, "market-5-house-row", 69.5, 68, 30, 0, 4);
                 shot(server, viewer, shots, "market-6-houses-front", 68, 67.5, 46, -90, -4);
                 shot(server, viewer, shots, "market-7-above", 40, 112, 70, 200, 55);
+                shot(server, viewer, shots, "market-12-facades-oblique", 66.5, 66.8, 37, -40, -6);
+                shot(server, viewer, shots, "market-13-jetty-close", 71.2, 66.2, 40, -55, -22);
+                shot(server, viewer, shots, "market-14-end-wall", 72, 67, 27.5, -20, -8);
+                shot(server, viewer, shots, "market-15-facades-other-side", 72.5, 66.8, 37, 40, -6);
                 server.console("execute in minecraft:market run time set 18000");
                 shot(server, viewer, shots, "market-8-night-street", 76, 67.2, 29.5, -90, 6);
                 shot(server, viewer, shots, "market-9-night-houses", 69.5, 68, 30, 0, 4);
