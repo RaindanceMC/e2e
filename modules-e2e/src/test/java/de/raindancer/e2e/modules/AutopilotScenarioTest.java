@@ -13,8 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Autopilot on a real server, in first person: switched on in mid-glide it pushes the player along where they look,
- * burning rockets from deep in the inventory; the scroll wheel sets the cruise speed without changing the held slot,
- * F switches economy mode, sneaking switches it off. And Boost leaves a right click with food in hand to the food.
+ * burning rockets from deep in the inventory; sneak and scroll sets the cruise speed without changing the held slot
+ * (scrolling alone still moves the hotbar), F switches economy mode, a tap of sneak switches it off. And Boost leaves a right click with food in hand to the food.
  */
 @Tag("e2e")
 class AutopilotScenarioTest {
@@ -68,11 +68,21 @@ class AutopilotScenarioTest {
             assertThat(pilot.soundsHeard()).contains("entity.firework_rocket.launch");
             assertThat(server.console("advancement test Pilot rainsenchants:autopilot")).doesNotContain("not");
 
-            // Three notches down the wheel: 6 blocks a second slower; the slot stays the stone's.
-            pilot.hold(3);
+            // Scrolling alone still moves the hotbar.
+            pilot.hold(1);
+            Await.until("the hotbar moved", Duration.ofSeconds(3),
+                    () -> server.console("data get entity Pilot SelectedItemSlot").contains(": 1"));
+            // Sneak and three notches down the wheel: 6 blocks a second slower, the slot stays; letting go after
+            // scrolling keeps Autopilot on.
+            pilot.sneak(true);
+            Await.ticks(3);
+            pilot.hold(4);
             Await.until("the cruise speed went down", Duration.ofSeconds(3),
                     () -> pilot.actionBars().stream().anyMatch(line -> line.contains("/54 b/s")));
-            assertThat(server.console("data get entity Pilot SelectedItemSlot")).as("the hotbar did not move").contains(": 0");
+            assertThat(server.console("data get entity Pilot SelectedItemSlot")).as("the hotbar did not move").contains(": 1");
+            pilot.sneak(false);
+            Await.ticks(5);
+            assertThat(pilot.chatText()).as("still on after a sneak with scrolling").noneMatch(line -> line.contains("Autopilot off"));
 
             pilot.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerActionPacket(
                     org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerAction.SWAP_HANDS,
@@ -84,9 +94,10 @@ class AutopilotScenarioTest {
                     .doesNotContain("stone");
 
             pilot.sneak(true);
-            Await.until("sneak: off", Duration.ofSeconds(3),
-                    () -> pilot.chatText().stream().anyMatch(line -> line.contains("Autopilot off")));
+            Await.ticks(3);
             pilot.sneak(false);
+            Await.until("a tap of sneak: off", Duration.ofSeconds(3),
+                    () -> pilot.chatText().stream().anyMatch(line -> line.contains("Autopilot off")));
             int left = rockets(server, "Pilot");
             Await.ticks(60);
             assertThat(rockets(server, "Pilot")).as("no rocket burnt once off").isEqualTo(left);
@@ -100,7 +111,7 @@ class AutopilotScenarioTest {
             Await.until("Running on Fumes", Duration.ofSeconds(3), () -> !server.console(
                     "advancement test Pilot rainsenchants:running_on_fumes").contains("not"));
             pilot.sneak(true);
-            Await.ticks(5);
+            Await.ticks(3);
             pilot.sneak(false);
 
             // --- Boost: a right click with food in hand eats, a right click with a block boosts -------------------------

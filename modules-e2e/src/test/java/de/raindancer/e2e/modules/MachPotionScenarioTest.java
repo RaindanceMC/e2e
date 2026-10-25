@@ -106,6 +106,16 @@ class MachPotionScenarioTest {
                     .contains("false");
             Await.until("the advancement", Duration.ofSeconds(3), () -> !server.console(
                     "advancement test Flyer rainsadventurers:mach_fuck").contains("not"));
+            // Standing on the ground while it works: lifted off and flying again.
+            server.console("tp Flyer 2.5 64 2.5");
+            Await.ticks(10);
+            int grounded = flyer.pushes().size();
+            flyer.moveTo(2.5, 64, 2.5, true);
+            Await.until("lifted off the ground", Duration.ofSeconds(3), () -> flyer.pushes().stream().skip(grounded)
+                    .anyMatch(push -> push[1] > 0.5));
+            flyer.moveTo(2.5, 70, 2.5, false);
+            Await.until("its elytra opened again", Duration.ofSeconds(3), () -> gliding(server, "Flyer"));
+
             // A second one while the first still works: Double Shot.
             flyer.hold(1).useHeld();
             Await.until("Double Shot", Duration.ofSeconds(5), () -> !server.console(
