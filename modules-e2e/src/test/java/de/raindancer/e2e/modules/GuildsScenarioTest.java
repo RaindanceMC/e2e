@@ -189,8 +189,10 @@ class GuildsScenarioTest {
             ada.closeWindow();
 
             // ---- perks: experience given by staff, the vault bought by a click, diamonds shift-clicked in
+            ada.forgetChat();
             server.console("guild admin give ELF 200000");
-            Await.ticks(10);
+            // The experience is written within a couple of seconds, and the points come with the level it brings.
+            Await.until("the guild levels up", WAIT, () -> told(ada, "reached level"));
             ada.run("guild perks");
             ada.awaitWindow("Perks");
             ada.click("Guild vault");
