@@ -91,6 +91,18 @@ class AutopilotScenarioTest {
             Await.ticks(60);
             assertThat(rockets(server, "Pilot")).as("no rocket burnt once off").isEqualTo(left);
 
+            // Nothing left to burn: told so, and Running on Fumes.
+            server.console("clear Pilot firework_rocket");
+            glide(server, pilot, "Pilot", 0.5);
+            pilot.run("autopilot");
+            Await.until("out of rockets", Duration.ofSeconds(5),
+                    () -> pilot.chatText().stream().anyMatch(line -> line.contains("Out of rockets")));
+            Await.until("Running on Fumes", Duration.ofSeconds(3), () -> !server.console(
+                    "advancement test Pilot rainsenchants:running_on_fumes").contains("not"));
+            pilot.sneak(true);
+            Await.ticks(5);
+            pilot.sneak(false);
+
             // --- Boost: a right click with food in hand eats, a right click with a block boosts -------------------------
             Bot eater = server.player("Eater");
             server.console("gamemode survival Eater");

@@ -46,7 +46,10 @@ class MachPotionScenarioTest {
             server.console("tp Flyer 2.5 64 0.5");
 
             // --- brewed: water bottle + dragon head + blaze powder ---------------------------------------------------
-            server.console("item replace block 0 64 0 container.0 with potion[potion_contents={potion:\"minecraft:water\"}]");
+            for (int bottle = 0; bottle < 3; bottle++) {
+                server.console("item replace block 0 64 0 container." + bottle
+                        + " with potion[potion_contents={potion:\"minecraft:water\"}]");
+            }
             server.console("item replace block 0 64 0 container.3 with dragon_head");
             server.console("item replace block 0 64 0 container.4 with blaze_powder");
             Await.until("brewed into the Potion of Mach Fuck", Duration.ofSeconds(40), () -> server.console(
@@ -54,10 +57,13 @@ class MachPotionScenarioTest {
             assertThat(server.console("data get block 0 64 0 Items[{Slot:3b}]")).as("the head is used up")
                     .doesNotContain("dragon_head");
             assertThat(server.console("advancement test Flyer rainsadventurers:hold_my_elytra")).doesNotContain("not");
+            assertThat(server.console("advancement test Flyer rainsadventurers:triple_batch")).as("three at once")
+                    .doesNotContain("not");
 
             // --- drunk mid-glide ----------------------------------------------------------------------------------------
             server.console("item replace entity Flyer armor.chest with elytra");
             server.console("item replace entity Flyer hotbar.0 from block 0 64 0 container.0");
+            server.console("item replace entity Flyer hotbar.1 from block 0 64 0 container.1");
             server.console("tp Flyer 0.5 " + Y + " 0.5 -90 0");
             Await.ticks(20);
             flyer.look(-90, 0);
@@ -70,6 +76,8 @@ class MachPotionScenarioTest {
             double y = Y - 2.5;
             flyer.moveTo(0.5, y, 0.5, false);
             int before = flyer.pushes().size();
+            // A bot joining can be put back once on its way from the spawn; only what comes after the drink counts.
+            long pulledBefore = server.log().lines().filter(line -> line.contains("Flyer moved too quickly")).count();
             flyer.hold(0).useHeld();
             Await.until("drunk: MACH FUCK", Duration.ofSeconds(5),
                     () -> flyer.chatText().stream().anyMatch(line -> line.contains("MACH FUCK")));
@@ -90,13 +98,18 @@ class MachPotionScenarioTest {
                 Await.ticks(1);
             }
             Await.ticks(5);
-            long pulledBack = server.log().lines().filter(line -> line.contains("Flyer moved too quickly")).count();
+            long pulledBack = server.log().lines().filter(line -> line.contains("Flyer moved too quickly")).count()
+                    - pulledBefore;
             assertThat(serverX(server, "Flyer")).as("the server has the flyer where the client flew").isGreaterThan(400);
             assertThat(pulledBack).as("never put back as moving too quickly").isZero();
             assertThat(server.console("gamerule elytra_movement_check")).as("the speed check is off while it works")
                     .contains("false");
             Await.until("the advancement", Duration.ofSeconds(3), () -> !server.console(
                     "advancement test Flyer rainsadventurers:mach_fuck").contains("not"));
+            // A second one while the first still works: Double Shot.
+            flyer.hold(1).useHeld();
+            Await.until("Double Shot", Duration.ofSeconds(5), () -> !server.console(
+                    "advancement test Flyer rainsadventurers:double_shot").contains("not"));
             Await.until("the speed check back on once it wore off", Duration.ofSeconds(10),
                     () -> server.console("gamerule elytra_movement_check").contains("true"));
             assertThat(flyer.chatText()).as("told it wore off").anyMatch(line -> line.contains("wears off"));
