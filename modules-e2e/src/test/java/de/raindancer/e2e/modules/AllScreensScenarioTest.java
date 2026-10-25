@@ -49,7 +49,7 @@ class AllScreensScenarioTest {
     @Test
     @DisplayName("every plugin's screens: offered, shown, none failing")
     void everyScreen() {
-        try (Server server = Server.start("all-screens", PLUGINS, List.of("Done ("))) {
+        try (Server server = Server.start("all-screens", PLUGINS, List.of("Done \\("))) {
             server.console("forceload add -32 -32 48 48");
             server.console("fill " + (X - 4) + " " + (Y - 1) + " " + (Z - 4) + " " + (X + ACROSS * GAP + 4) + " " + (Y - 1)
                     + " " + (Z + 12 * GAP + 4) + " minecraft:stone");
