@@ -46,7 +46,7 @@ class ScreensScenarioTest {
 
             // ---- the kinds there are: Core's and the economy's
             ada.forgetChat();
-            ada.run("screen");
+            ada.run("screen kinds");
             Await.until("Ada sees the kinds", WAIT, () -> said(ada, "Welcome") && said(ada, "Your money"));
 
             // ---- a personal screen: each sees their own greeting, never the other's
@@ -104,11 +104,62 @@ class ScreensScenarioTest {
             Await.ticks(100);
             assertThat(count(server, "@e[type=minecraft:text_display]")).as("not put back").isZero();
 
-            // ---- not for everybody
+            // ---- charts: the server's status, its ticks and its player record
+            ada.forgetChat();
+            ada.run("screen place server-status");
+            Await.until("the status screen is up", WAIT, () -> said(ada, "is up"));
+            server.console("execute as Ada at @s run tp @s ~4 ~ ~");
+            Await.ticks(5);
+            ada.forgetChat();
+            ada.run("screen place chart-tps");
+            Await.until("the TPS chart is up", WAIT, () -> said(ada, "is up"));
+            server.console("execute as Ada at @s run tp @s ~4 ~ ~");
+            Await.ticks(5);
+            ada.forgetChat();
+            ada.run("screen place player-record");
+            Await.until("the record screen is up", WAIT, () -> said(ada, "is up"));
+            Await.until("Ada sees the status", WAIT, () -> shown(ada, "RAM") && shown(ada, "Players"));
+            Await.until("Ada sees the TPS chart", WAIT, () -> shown(ada, "last 6 hours"));
+            Await.until("Ada sees the record", WAIT, () -> shown(ada, "Most at once"));
+            ada.forgetChat();
+            ada.run("screen list");
+            Await.until("Ada's list", WAIT, () -> said(ada, "Player record"));
+            int adas = Integer.parseInt(ada.chatText().stream().filter(line -> line.contains("Player record"))
+                    .findFirst().orElseThrow().trim().split("\\s+")[0].substring(1));
+
+            // ---- a player puts up screens of their own, up to their limit
             bo.forgetChat();
-            bo.run("screen place online");
-            Await.ticks(40);
-            assertThat(said(bo, "is up")).as("Bo may not put up screens").isFalse();
+            bo.run("screen place balance");
+            Await.until("Bo's first is up", WAIT, () -> said(bo, "is up"));
+            for (String kind : List.of("chart-players", "welcome")) {
+                server.console("execute as Bo at @s run tp @s ~3 ~ ~");
+                Await.ticks(5);
+                bo.forgetChat();
+                bo.run("screen place " + kind);
+                Await.until("Bo's " + kind + " is up", WAIT, () -> said(bo, "is up"));
+            }
+            bo.forgetChat();
+            bo.run("screen place clock");
+            Await.until("a fourth is refused", WAIT, () -> said(bo, "screen(s) up already"));
+            Await.until("Bo sees his own money", WAIT, () -> shown(bo, "Your money"));
+            bo.forgetChat();
+            bo.run("screen list");
+            Await.until("Bo's list shows only his", WAIT, () -> said(bo, "Your screens (3/3)"));
+            assertThat(said(bo, "Player record")).as("not Ada's").isFalse();
+
+            // ---- his own he nudges; Ada's he cannot touch
+            bo.forgetChat();
+            bo.run("screen up 0.5");
+            Await.until("Bo nudges his own", WAIT, () -> said(bo, "moved up 0.50"));
+            bo.forgetChat();
+            bo.run("screen remove #" + adas);
+            Await.until("Ada's is not his", WAIT, () -> said(bo, "no screen of yours #" + adas));
+            bo.forgetChat();
+            bo.run("screen remove");
+            Await.until("Bo takes his nearest down", WAIT, () -> said(bo, "is gone"));
+            ada.forgetChat();
+            ada.run("screen list");
+            Await.until("staff see every screen, his too", WAIT, () -> said(ada, "— Bo"));
 
             assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy")).isEmpty();
         }

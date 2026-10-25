@@ -22,6 +22,8 @@
     <properties>
         <!-- No library version of its own: only plugins are built here. -->
         <e2e-harness.version>0.11.0</e2e-harness.version>
+        <!-- The Core the scenarios run on: the newest, ahead of the parent's. -->
+        <rainscore.version>2.11.0</rainscore.version>
     </properties>
 
     <modules>

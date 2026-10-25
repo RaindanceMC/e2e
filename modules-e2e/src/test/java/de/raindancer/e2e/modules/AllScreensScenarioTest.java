@@ -35,7 +35,8 @@ class AllScreensScenarioTest {
             "dnd-standalone:RainsAdventurers-.*", "rift-standalone:RainsRift-.*");
 
     /** At least these, one or more from each plugin — the rest are found in the list itself. */
-    private static final List<String> EXPECTED = List.of("welcome", "online", "balance", "richest", "guild-you",
+    private static final List<String> EXPECTED = List.of("welcome", "online", "server-status", "chart-tps",
+            "chart-memory", "chart-cpu", "chart-players", "player-record", "balance", "richest", "guild-you",
             "guild-top", "quests-you", "job-board", "claims-you", "claims-biggest", "homes-you", "warps-list",
             "market-you", "market-best", "rank-you", "role-you", "essentials-afk", "moderation-staff",
             "moderation-you", "playerutils-ping", "twitch-live", "adventurer-you", "rift-you");
@@ -61,7 +62,7 @@ class AllScreensScenarioTest {
             List<String> ids = new ArrayList<>();
             Await.until("every plugin offers its screens", WAIT, () -> {
                 ada.forgetChat();
-                ada.run("screen");
+                ada.run("screen kinds");
                 Await.ticks(20);
                 ids.clear();
                 for (String line : ada.chatText()) {
