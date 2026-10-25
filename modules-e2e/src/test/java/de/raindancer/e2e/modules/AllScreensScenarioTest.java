@@ -98,9 +98,6 @@ class AllScreensScenarioTest {
                     "RainsExtendedClaims", "RainsHomes", "RainsWarps", "RainsShops", "RainsRanks", "RainsRoles",
                     "RainsEssentials", "RainsModeration", "RainsPlayerUtils", "RainsTwitch", "RainsAdventurers",
                     "RainsRift"))
-                    // Screens make their text off the server's threads, so a database call on the thread running the
-                    // world is never theirs: those are other features' own (and reported where they belong).
-                    .filteredOn(line -> !line.contains("ran on the thread running the world"))
                     .isEmpty();
         }
     }
