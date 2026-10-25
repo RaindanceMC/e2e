@@ -124,11 +124,24 @@ class ShopsScenarioTest {
                     .as("a hopper drained the shop's chest").doesNotContain("diamond");
             server.console("setblock " + X + " " + (Y - 1) + " " + Z + " minecraft:stone");
 
-            // ── from afar, through /market ──────────────────────────────────────────────────────────────────────
+            // ── found through /market: a click takes Bo to the shop, in front of its chest, and trades nothing ──
             server.console("tp Bo " + (X + 40) + " " + Y + " " + Z);
             Await.ticks(40);
             bo.run("market diamond");
             bo.clickSlot(slot(bo, "Diamond"));
+            Await.until("Bo travelled to the front of the shop's chest", WAIT,
+                    () -> Math.abs(bo.position().getX() - (X + 0.5)) < 1.5
+                            && Math.abs(bo.position().getZ() - (Z + 1.5)) < 1.5);
+            assertThat(carried(server, "Bo", "diamond")).as("going there bought nothing").isZero();
+            assertThat(inChest(server, X, "diamond")).isEqualTo(20);
+
+            // ── from afar, through /market, only when switched on (off by default): shift click ─────────────────
+            assertThat(server.console("settings set remote-buying true")).contains("is now");
+            assertThat(server.console("settings set remote-selling true")).contains("is now");
+            server.console("tp Bo " + (X + 40) + " " + Y + " " + Z);
+            Await.ticks(40);
+            bo.run("market diamond");
+            bo.shiftClickSlot(slot(bo, "Diamond"));
             bo.clickSlot(slot(bo, "Buy one bundle"));
             bo.expectChat("Bought 1× Diamond");
             Await.until("bought from afar", WAIT, () -> carried(server, "Bo", "diamond") == 1);
@@ -137,7 +150,7 @@ class ShopsScenarioTest {
             // ── buying and selling from afar switch off each on its own ─────────────────────────────────────────
             assertThat(server.console("settings set remote-buying false")).contains("is now");
             bo.run("market sell diamond");
-            bo.clickSlot(slot(bo, "Diamond"));
+            bo.shiftClickSlot(slot(bo, "Diamond"));
             assertThat(lore(bo, "Buy one bundle")).as("buying from afar is off, and the button says so")
                     .contains("Buying from afar");
             bo.forgetChat();
@@ -148,7 +161,7 @@ class ShopsScenarioTest {
             assertThat(server.console("settings set remote-buying true")).contains("is now");
             assertThat(server.console("settings set remote-selling false")).contains("is now");
             bo.run("market diamond");
-            bo.clickSlot(slot(bo, "Diamond"));
+            bo.shiftClickSlot(slot(bo, "Diamond"));
             bo.forgetChat();
             bo.clickSlot(slot(bo, "Buy one bundle"));
             bo.expectChat("Bought 1× Diamond");
