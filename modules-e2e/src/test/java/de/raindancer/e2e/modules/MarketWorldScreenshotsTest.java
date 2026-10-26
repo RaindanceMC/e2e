@@ -58,10 +58,10 @@ class MarketWorldScreenshotsTest {
                 shot(server, viewer, shots, "market-13-jetty-close", 71.2, 66.2, 40, -55, -22);
                 shot(server, viewer, shots, "market-14-end-wall", 72, 67, 27.5, -20, -8);
                 shot(server, viewer, shots, "market-15-facades-other-side", 72.5, 66.8, 37, 40, -6);
-                // The Potion of Mach Fuck stall on the south-facing plot x 107–118, z 13–24: street, corner, fins.
-                shot(server, viewer, shots, "market-16-potion-stall", 112.5, 76, 38, 180, 3);
-                shot(server, viewer, shots, "market-17-potion-oblique", 100, 76, 35, -144, 3);
-                shot(server, viewer, shots, "market-18-potion-fins", 112.5, 67, 29, 180, -12);
+                // The Potion of Mach Fuck stall on the south-facing plot x 107–118, z 13–24: street, corner, inside.
+                shot(server, viewer, shots, "market-16-potion-stall", 113, 67.5, 32, 180, -14);
+                shot(server, viewer, shots, "market-17-potion-oblique", 103, 69, 31, -147, -12);
+                shot(server, viewer, shots, "market-18-potion-inside", 113, 65.2, 21.5, 180, 8);
                 // Standing on a free plot: the action bar says so, and /market plot offers it.
                 server.console("gamemode survival Viewer");
                 server.console("execute in minecraft:market run tp Viewer 86.5 65 21.5 0 20");
