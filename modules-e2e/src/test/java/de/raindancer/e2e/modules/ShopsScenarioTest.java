@@ -85,6 +85,7 @@ class ShopsScenarioTest {
             Await.until("the item and price float over the chest", WAIT, () -> server.console(
                     "execute if entity @e[type=minecraft:text_display]").contains("passed")
                     && server.console("execute if entity @e[type=minecraft:item_display]").contains("passed"));
+            spins(server);
 
             // ── Bo buys one at the frame ────────────────────────────────────────────────────────────────────────
             UUID frame = frame(server);
@@ -275,6 +276,35 @@ class ShopsScenarioTest {
     }
 
     /** The one item frame on the server, by the four ints {@code data get} prints its UUID as. */
+    /** The floating item turns round and bobs; each switched off in the settings stops at once, no restart. */
+    static void spins(PaperServer server) {
+        String item = "data get entity @e[type=minecraft:item_display,limit=1] ";
+        Await.until("the floating item turns about its own axis", WAIT,
+                () -> server.console(item + "billboard").contains("fixed"));
+        String before = server.console(item + "transformation.left_rotation");
+        Await.ticks(45);
+        assertThat(server.console(item + "transformation.left_rotation")).as("the item turned").isNotEqualTo(before);
+
+        assertThat(server.console("settings set item-spin-seconds 0")).contains("is now");
+        Await.until("the item faces the viewer again", WAIT,
+                () -> server.console(item + "billboard").contains("vertical"));
+        String still = server.console(item + "transformation.left_rotation");
+        Await.ticks(45);
+        assertThat(server.console(item + "transformation.left_rotation")).as("the item stops turning").isEqualTo(still);
+        String height = server.console(item + "transformation.translation");
+        Await.ticks(25);
+        assertThat(server.console(item + "transformation.translation")).as("it still bobs").isNotEqualTo(height);
+
+        assertThat(server.console("settings set item-bobs false")).contains("is now");
+        Await.ticks(10);
+        String resting = server.console(item + "transformation.translation");
+        Await.ticks(25);
+        assertThat(server.console(item + "transformation.translation")).as("it rests").isEqualTo(resting);
+        assertThat(server.console("settings set item-bobs true")).contains("is now");
+        assertThat(server.console("settings set item-spin-seconds 6")).contains("is now");
+        Await.until("it turns again", WAIT, () -> server.console(item + "billboard").contains("fixed"));
+    }
+
     static UUID frame(PaperServer server) {
         String said = server.console("data get entity @e[type=minecraft:item_frame,limit=1] UUID");
         Matcher ints = Pattern.compile("\\[I;\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+)]").matcher(said);
