@@ -120,6 +120,17 @@ class EconomyStatuesScenarioTest {
         return "@e[type=minecraft:" + type + ",x=" + x + ",y=" + y + ",z=" + z + ",distance=..4]";
     }
 
+    /** The height of the nearest entity of a kind to Ada, read from its data. */
+    private static double heightNearAda(Server server, String type) {
+        String out = server.console("execute at Ada run data get entity @e[limit=1,sort=nearest,type=minecraft:"
+                + type + "] Pos[1]");
+        java.util.regex.Matcher found = java.util.regex.Pattern.compile("(-?\\d+\\.?\\d*)d").matcher(out);
+        if (!found.find()) {
+            throw new AssertionError("no height in: " + out);
+        }
+        return Double.parseDouble(found.group(1));
+    }
+
     @Test
     @DisplayName("statues one by one: each placed where staff stand, moved, removed on its own; an old podium comes back as three")
     void oneByOne() {
@@ -160,6 +171,8 @@ class EconomyStatuesScenarioTest {
                     + "distance=..2] Rotation")).as("facing the nearest eighth of Ada's look").contains("45.0f, 0.0f");
             assertThat(byAda(server, "block_display", 2)).as("its own pedestal").isEqualTo(1);
             assertThat(byAda(server, "text_display", 5)).as("its own label").isEqualTo(1);
+            assertThat(heightNearAda(server, "text_display") - heightNearAda(server, "mannequin"))
+                    .as("the label floats clear above the statue's name tag").isGreaterThan(2.6);
 
             // ---- the third of the casino somewhere else, nobody's yet
             server.console("execute as Ada at @s run tp @s ~8 ~ ~ 0 20");
