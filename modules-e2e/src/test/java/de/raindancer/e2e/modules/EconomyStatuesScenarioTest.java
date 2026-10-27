@@ -184,6 +184,22 @@ class EconomyStatuesScenarioTest {
             assertThat(count(server, wearing(bo.id().toString()))).as("moved, not copied").isEqualTo(2);
             assertThat(count(server, "@e[type=minecraft:mannequin]")).isEqualTo(5);
             assertThat(count(server, "@e[type=minecraft:block_display]")).isEqualTo(5);
+
+            // ---- a #2 of the same board side by side shares the #1's label instead of stacking its own
+            server.console("execute as Ada at @s run tp @s ~2 ~ ~ 180 20");
+            Await.ticks(10);
+            ada.forgetChat();
+            ada.run("eco statue place richest 2");
+            Await.until("Ada is told", WAIT, () -> said(ada, "#2 of the richest players stands here"));
+            Await.until("the #2 stands", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 6);
+            Await.ticks(140);
+            assertThat(byAda(server, "text_display", 5)).as("one label over the two").isEqualTo(1);
+            ada.forgetChat();
+            ada.run("eco statue remove");
+            Await.until("the #2 is gone", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 5);
+            server.console("execute as Ada at @s run tp @s ~-2 ~ ~ 180 20");
+            Await.ticks(10);
+
             ada.forgetChat();
             ada.run("eco statue move playtime 2");
             Await.until("nothing to move is said", WAIT, () -> said(ada, "There is no #2"));
