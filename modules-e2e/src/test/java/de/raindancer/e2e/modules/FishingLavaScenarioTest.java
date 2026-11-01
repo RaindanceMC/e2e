@@ -59,6 +59,7 @@ class FishingLavaScenarioTest {
             ada.useHeld();
             Await.until("a fish bites in the lava", Duration.ofSeconds(40),
                     () -> ada.particlesSeen().contains("FLAME"));
+            assertThat(ada.particlesSeen()).as("a wake of smoke came at the float before the bite").contains("SMOKE");
             ada.useHeld();
             Await.until("the catch lands in the bag", Duration.ofSeconds(10), () -> ada.items().size() > before
                     || ada.items().stream().anyMatch(item -> item.tags().getOrDefault("rainscore:custom-item", "")
