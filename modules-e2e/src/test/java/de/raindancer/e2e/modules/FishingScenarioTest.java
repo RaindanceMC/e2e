@@ -55,6 +55,19 @@ class FishingScenarioTest {
             assertThat(server.console("execute if block " + x + " " + y + " " + z + " air"))
                     .as("empty, the chest is gone").contains("passed");
 
+            // A fish of ours is not cooked on a campfire into a cooked cod.
+            ada.run("clear");
+            server.console("setblock " + (x + 1) + " " + y + " " + z + " campfire");
+            ada.run("fishing give Ada fish:silver_herring");
+            ada.expectItem("a Silver Herring", item -> item.name().contains("Silver Herring"));
+            ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Silver Herring")));
+            ada.forgetChat();
+            ada.useOn(x + 1, y, z);
+            Await.until("the campfire turns the fish away", Duration.ofSeconds(10),
+                    () -> ada.chatText().stream().anyMatch(line -> line.contains("cook it into a dish")));
+            ada.expectItem("the Silver Herring still raw in hand", item -> item.name().contains("Silver Herring"));
+            server.console("setblock " + (x + 1) + " " + y + " " + z + " air");
+
             // The owner takes a placed chest back with a sneaking left click.
             server.console("clear Ada");
             Await.ticks(5);

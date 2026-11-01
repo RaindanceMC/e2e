@@ -11,12 +11,12 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** A sea chest's money comes out of it as the economy's own coins — and a cheque for more than a few stacks. */
+/** A sea chest's money comes out of it as one cheque from the chest — never as loose coins. */
 @Tag("e2e")
 class FishingCoinsScenarioTest {
 
     @Test
-    @DisplayName("with the economy installed, a Void chest's money comes out as coins and a cheque, not as a chat line")
+    @DisplayName("with the economy installed, a Void chest's money comes out as one cheque, not as coins or a chat line; the shop buys fish")
     void coins() throws Exception {
         try (Server server = Server.start("fishing-coins",
                 List.of("fishing-standalone:RainsFishing-.*", "economy-standalone:RainsEconomy-.*"),
@@ -44,12 +44,27 @@ class FishingCoinsScenarioTest {
 
             int coins = ada.items().stream().filter(item -> item.name().contains("Coin"))
                     .mapToInt(Bot.Item::amount).sum();
-            assertThat(coins).as("a few stacks of coins, the most a chest gives as coins").isEqualTo(192);
-            assertThat(ada.items()).as("the rest on one cheque from the chest")
-                    .anyMatch(item -> item.name().contains("Cheque")
-                            && item.lore().stream().anyMatch(line -> line.contains("Void Chest")));
+            assertThat(coins).as("no loose coins").isZero();
+            assertThat(ada.items().stream().filter(item -> item.name().contains("Cheque")).toList())
+                    .as("exactly one cheque, written by the chest").singleElement()
+                    .satisfies(item -> assertThat(item.lore()).anyMatch(line -> line.contains("Void Chest")));
             assertThat(ada.chatText()).as("no chat line about the money")
                     .noneMatch(line -> line.contains("straight to your balance"));
+
+            // The shop buys our fish at fishing's price, never as the cod underneath.
+            ada.run("clear");
+            ada.run("fishing give Ada fish:astral_leviathan 2");
+            ada.expectItem("two Astral Leviathans", item -> item.name().contains("Astral Leviathan"));
+            ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Astral Leviathan")));
+            ada.forgetChat();
+            ada.run("sell hand");
+            Await.until("the fish are sold", Duration.ofSeconds(15),
+                    () -> ada.chatText().stream().anyMatch(line -> line.contains("Astral Leviathan")
+                            && line.toLowerCase().contains("sold")));
+            Await.until("the fish are gone", Duration.ofSeconds(10),
+                    () -> ada.items().stream().noneMatch(item -> item.name().contains("Astral Leviathan")));
+            assertThat(ada.chatText()).as("a mythic fish fetches 75 times a common one (base 8): 1,200 for two")
+                    .anyMatch(line -> line.contains("Astral Leviathan") && line.contains("1,200"));
         }
     }
 }
