@@ -54,6 +54,10 @@ class FishingGearScenarioTest {
 
             // bait: one off the off hand per cast
             server.console("clear Ada");
+            ada.run("fishing give Ada bait:voidlure 2");
+            Bot.Item voidlure = ada.expectItem("a Voidlure", item -> item.name().contains("Voidlure"));
+            assertThat(voidlure.lore()).anyMatch(line -> line.contains("Mythic catches"));
+            assertThat(voidlure.tags().getOrDefault("rainscore:custom-item", "")).isEqualTo("fishing:bait-voidlure");
             ada.run("fishing give Ada bait:wriggler 3");
             ada.expectItem("wriggler bait", item -> item.name().contains("Wriggler Bait"));
             int baitSlot = ada.hotbarSlotOf(item -> item.name().contains("Wriggler Bait"));
