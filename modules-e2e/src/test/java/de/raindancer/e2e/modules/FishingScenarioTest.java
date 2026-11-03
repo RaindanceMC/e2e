@@ -83,7 +83,7 @@ class FishingScenarioTest {
             ada.expectItem("the Driftwood Chest back", item -> item.name().contains("Driftwood Chest"));
 
             Bot.Window root = ada.runAndOpen("fishing", "Fishing").window().orElseThrow();
-            assertThat(root.slotNamed("Skills")).isPresent();
+            assertThat(root.slotNamed("Skill tree")).isPresent();
             assertThat(root.slotNamed("Rod upgrades")).isPresent();
             ada.click("Collection");
             Bot.Window collection = ada.awaitWindow("Fish collection");

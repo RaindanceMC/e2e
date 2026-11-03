@@ -22,6 +22,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("e2e")
 class FishingScreensScenarioTest {
 
+    private static final java.time.Duration WAIT = java.time.Duration.ofSeconds(10);
+
+    private static String named(Bot bot, String text) {
+        return bot.window().flatMap(window -> window.slotNamed(text).map(slot -> window.top().get(slot).name()))
+                .orElse("");
+    }
+
+    private static String lore(Bot.Window window, String text) {
+        return window.slotNamed(text).map(slot -> String.join(" ", window.top().get(slot).lore())).orElse("");
+    }
+
     private static final Path OUT = Path.of(System.getProperty("fishing.guis", "target/fishing-guis"));
 
     @Test
@@ -45,15 +56,27 @@ class FishingScreensScenarioTest {
             dump("1-fishing", root);
             ada.closeWindow();
 
-            Bot.Window skills = ada.runAndOpen("fishing skills", "Fishing skills").window().orElseThrow();
-            ada.click("Rare Instinct");
+            Bot.Window skills = ada.runAndOpen("fishing skills", "Tidecaller").window().orElseThrow();
+            assertThat(skills.slotNamed("Quick Bite")).isPresent();
+            assertThat(lore(skills, "Swift Reel")).contains("Needs a node next to it first.");
+            Await.ticks(10);
+            ada.click("Quick Bite");
+            Await.until("Quick Bite rank 1", WAIT, () -> named(ada, "Quick Bite").contains("1/5"));
+            ada.click("Swift Reel");
+            Await.until("Swift Reel taken", WAIT, () -> named(ada, "Swift Reel").contains("1/3"));
+            ada.click("Spot Reader");
+            Await.until("Spot Reader taken", WAIT, () -> named(ada, "Spot Reader").contains("1/3"));
+            ada.click("Patience");
+            Await.until("Patience taken, Frenzy shut", WAIT,
+                    () -> lore(ada.window().orElseThrow(), "Frenzy").contains("Shut: you took the other side"));
+            ada.click("Frenzy");
             Await.ticks(15);
-            ada.click("Rare Instinct");
-            Await.ticks(15);
-            ada.click("Treasure Sense");
-            Await.ticks(15);
+            assertThat(ada.chatText()).anyMatch(line -> line.contains("Frenzy") && line.contains("Shut"));
             skills = ada.window().orElseThrow();
             dump("2-skills", skills);
+            ada.click("Next page");
+            Bot.Window treasure = ada.awaitWindow("Treasure Hunter");
+            assertThat(treasure.slotNamed("Treasure Sense")).isPresent();
             ada.closeWindow();
 
             ada.runAndOpen("fishing rod", "Rod upgrades");
