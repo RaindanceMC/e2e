@@ -110,6 +110,24 @@ class FishingGearScenarioTest {
             Await.until("the rod wears it", Duration.ofSeconds(10), () -> said(ada, "now wears"));
             ada.closeWindow();
 
+            // Wearing a skin is for supporters: Bo keeps the skin he redeems but cannot put it on.
+            Bot bo = server.player("Bo");
+            server.console("fishing give Bo skin:starfall");
+            server.console("fishing give Bo rod:reed");
+            bo.expectItem("a skin token", item -> item.name().contains("Starfall Rod Skin"));
+            bo.hold(bo.hotbarSlotOf(item -> item.name().contains("Starfall Rod Skin")));
+            bo.useHeld();
+            Await.until("the skin is his", Duration.ofSeconds(10), () -> said(bo, "rod skin is yours"));
+            bo.hold(bo.hotbarSlotOf(item -> item.name().contains("Reed Rod")));
+            bo.runAndOpen("fishing rod", "Rod upgrades");
+            bo.click("Rod skins");
+            Await.until("his skins page opens", Duration.ofSeconds(10),
+                    () -> bo.window().map(window -> window.title().contains("Rod skins")).orElse(false));
+            bo.forgetChat();
+            bo.click("Starfall");
+            Await.until("a thank-you for supporters", Duration.ofSeconds(10), () -> said(bo, "thank-you for supporters"));
+            bo.closeWindow();
+
             ada.forgetChat();
             ada.run("fishing spot remove");
             Await.until("the fixed spot is gone", Duration.ofSeconds(10), () -> said(ada, "gone for good"));

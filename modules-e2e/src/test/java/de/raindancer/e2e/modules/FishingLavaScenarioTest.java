@@ -57,6 +57,10 @@ class FishingLavaScenarioTest {
             ada.forgetEffects();
             ada.forgetChat();
             ada.useHeld();
+            // The float rests on top of the lava (its top block is y-1, so the surface is y-0.05), not sunk in it.
+            Await.until("the float rests on the lava", Duration.ofSeconds(20), () -> server.console(
+                    "execute if entity @e[type=minecraft:fishing_bobber,x=" + (x - 50) + ",dx=100,z=" + (z - 50)
+                            + ",dz=100,y=" + (y - 0.2) + ",dy=0.3]").contains("passed"));
             Await.until("a fish bites in the lava", Duration.ofSeconds(40),
                     () -> ada.particlesSeen().contains("FLAME"));
             assertThat(ada.particlesSeen()).as("a wake of smoke came at the float before the bite").contains("SMOKE");
