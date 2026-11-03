@@ -43,6 +43,10 @@ final class Server implements AutoCloseable {
         PaperServer.Builder builder = PaperServer.forRun()
                 .seed(1)
                 .in(E2e.serverFolder(scenario))
+                // Every scenario's folder is wiped, so Paper's own download of the Mojang jar (60 MB) and its
+                // libraries would happen on every run; one shared repository outside target keeps them.
+                .jvm("-DbundlerRepoDir=" + Path.of(System.getProperty("user.home"), ".cache", "rains-e2e",
+                        "paperclip"))
                 .plugin(Path.of(System.getProperty("e2e.rainscore")));
         for (String plugin : plugins) {
             String[] parts = plugin.split(":", 2);
