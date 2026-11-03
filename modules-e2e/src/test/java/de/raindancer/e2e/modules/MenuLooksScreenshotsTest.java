@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The painted menus in the real client, wearing the pack Core builds — Core's house style, the shop's stall, the
- * owner's workshop and the adventurers' parchment:
+ * owner's workshop and the adventurers' skill tree:
  * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=MenuLooksScreenshotsTest}.
  */
 @Tag("screenshots")
@@ -59,20 +59,16 @@ class MenuLooksScreenshotsTest {
                 Bot scout = server.player("Scout");
                 server.console("gamemode spectator Scout");
                 server.console("tp Scout 20 80 20");
-                scout.runAndOpen("adventurer class", "Choose");
-                int wizard = scout.window().flatMap(window -> window.slotNamed("Wizard")).orElseThrow();
-                server.console("e2e as Viewer adventurer class");
-                Await.ticks(40);
-                viewer.screenshotHovering(shots.resolve("menus-6-classes.png"), wizard);
-                server.console("e2e click Viewer " + wizard);
-                Await.ticks(30);
                 server.console("adventurer admin level Viewer 9");
+                server.console("adventurer admin level Scout 9");
+                scout.runAndOpen("adventurer", "Vitality");
                 server.console("e2e as Viewer adventurer");
                 Await.ticks(40);
-                viewer.screenshot(shots.resolve("menus-7-sheet.png"));
-                server.console("e2e as Viewer adventurer spells");
+                viewer.screenshot(shots.resolve("menus-6-skill-tree.png"));
+                int next = scout.window().flatMap(window -> window.slotNamed("Next page")).orElseThrow();
+                server.console("e2e click Viewer " + next);
                 Await.ticks(40);
-                viewer.screenshot(shots.resolve("menus-8-spellbook.png"));
+                viewer.screenshot(shots.resolve("menus-7-skill-tree-might.png"));
 
                 assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy", "RainsAdventurers")).isEmpty();
                 String log = Files.readString(E2e.out().resolve("client-Viewer").resolve("client.log"));

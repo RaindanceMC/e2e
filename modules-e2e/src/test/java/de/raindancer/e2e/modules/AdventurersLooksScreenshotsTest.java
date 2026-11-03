@@ -23,10 +23,10 @@ class AdventurersLooksScreenshotsTest {
 
     private static final List<String> WALL = List.of("potion_of_healing", "potion_of_greater_healing",
             "potion_of_superior_healing", "potion_of_supreme_healing", "potion_of_heroism", "potion_of_speed",
-            "wand_of_magic_missiles", "spell_scroll meteor_swarm", "bag_of_holding");
+            "wand_of_magic_missiles", "spell_scroll fireball 5", "bag_of_holding");
     private static final List<String> WALL_TWO = List.of("ring_of_protection", "amulet_of_health",
-            "boots_of_striding", "weapon_plus_one", "weapon_plus_two", "weapon_plus_three", "spell_scroll fireball",
-            "spell_scroll magic_missile", "spell_scroll disintegrate");
+            "boots_of_striding", "weapon_plus_one", "weapon_plus_two", "weapon_plus_three", "spell_scroll lightning 3",
+            "spell_scroll magic_missile", "spell_scroll misty_step 2");
 
     private static int slot(Bot scout, String named) {
         return scout.window().flatMap(window -> window.slotNamed(named))
@@ -52,7 +52,7 @@ class AdventurersLooksScreenshotsTest {
     }
 
     @Test
-    @DisplayName("magic items on a wall, in the hotbar and in hand; the stance and the menus with their icons")
+    @DisplayName("magic items on a wall, in the hotbar and in hand; the skill tree with its art")
     void looks() throws java.io.IOException {
         try (Server server = Server.start("adventurers-looks", List.of("dnd-standalone:RainsAdventurers-.*"),
                 List.of("Adventurers are up"))) {
@@ -98,37 +98,22 @@ class AdventurersLooksScreenshotsTest {
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("looks-4-hotbar-wand.png"));
 
-                // --- the stance's icons, the class menu, the picker ------------------------------------------------
-                scout.runAndOpen("adventurer", "Choose");
-                server.console("e2e as Viewer adventurer");
-                Await.ticks(40);
-                viewer.screenshotHovering(shots.resolve("looks-5-classes.png"), slot(scout, "Sorcerer"));
-                server.console("e2e click Viewer " + slot(scout, "Wizard"));
-                scout.click("Wizard");
-                scout.awaitWindow("Character");
-                Await.ticks(30);
+                // --- the skill tree with its medallions, chain and paintings ------------------------------------------
                 server.console("adventurer admin level Viewer 17");
                 server.console("adventurer admin level Scout 17");
+                scout.runAndOpen("adventurer", "Vitality");
                 server.console("e2e as Viewer adventurer");
                 Await.ticks(40);
-                viewer.screenshot(shots.resolve("looks-8-sheet.png"));
-                viewer.screenshotHovering(shots.resolve("looks-9-sheet-ability.png"), 14);
-                server.console("e2e as Viewer adventurer spells");
-                scout.runAndOpen("adventurer spells", "Spellbook");
-                Await.ticks(30);
-                int slotFour = slot(scout, "Magic Missile");
-                server.console("e2e click Viewer " + slotFour);
-                scout.clickSlot(slotFour);
-                scout.awaitWindow("Stance slot");
-                Await.ticks(40);
-                viewer.screenshotHovering(shots.resolve("looks-6-spells.png"), slot(scout, "Meteor Swarm"));
-                server.console("e2e click Viewer " + slot(scout, "Fireball"));
-                Await.ticks(20);
-                server.console("clear Viewer");
-                server.console("e2e as Viewer adventurer stance");
-                server.console("tp Viewer 0.5 64 0.5 180 -5");
-                Await.ticks(60);
-                viewer.screenshot(shots.resolve("looks-7-stance.png"));
+                for (String node : List.of("Toughness", "Hardened", "Big Heart", "Stoneskin")) {
+                    int at = slot(scout, node);
+                    server.console("e2e click Viewer " + at);
+                    scout.clickSlot(at);
+                    scout.expectChat(node + " rank 1 learnt");
+                    Await.ticks(30);
+                }
+                viewer.screenshot(shots.resolve("looks-5-tree.png"));
+                viewer.screenshotHovering(shots.resolve("looks-6-tree-node.png"), slot(scout, "Big Heart"));
+                viewer.screenshotHovering(shots.resolve("looks-7-tree-summary.png"), slot(scout, "Vitality"));
 
                 assertThat(server.paper.errorsFrom("RainsCore", "RainsAdventurers")).isEmpty();
                 String log = Files.readString(E2e.out().resolve("client-Viewer").resolve("client.log"));
