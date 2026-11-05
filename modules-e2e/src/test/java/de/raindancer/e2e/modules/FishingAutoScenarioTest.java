@@ -56,8 +56,8 @@ class FishingAutoScenarioTest {
             ada.runAndOpen("fishing skills", "Tidecaller");
             Await.ticks(10);
             for (int rank = 1; rank <= 5; rank++) {
-                ada.click("Quick Bite");
                 int now = rank;
+                clickNode(ada, "Quick Bite", () -> lore(ada, "Quick Bite").contains(now + "/5"));
                 Await.until("Quick Bite rank " + now, WAIT, () -> lore(ada, "Quick Bite").contains(now + "/5"));
             }
             ada.click("Auto-Reel");
@@ -79,5 +79,20 @@ class FishingAutoScenarioTest {
     private static String lore(Bot bot, String name) {
         return bot.window().flatMap(window -> window.slotNamed(name).map(slot -> window.top().get(slot)))
                 .map(item -> item.name() + " " + String.join(" ", item.lore())).orElse("");
+    }
+
+    /** A click on a node, sent again only if it went unanswered — no rank and no word of it in chat, so never twice. */
+    private static void clickNode(Bot bot, String node, java.util.function.BooleanSupplier taken) {
+        for (int tries = 0; tries < 3; tries++) {
+            int said = bot.chatText().size();
+            bot.click(node);
+            try {
+                Await.until(node + " answered", java.time.Duration.ofSeconds(3),
+                        () -> taken.getAsBoolean() || bot.chatText().stream().skip(said).anyMatch(line -> line.contains(node)));
+                return;
+            } catch (AssertionError unanswered) {
+                // the click was dropped as the window opened; send it again
+            }
+        }
     }
 }

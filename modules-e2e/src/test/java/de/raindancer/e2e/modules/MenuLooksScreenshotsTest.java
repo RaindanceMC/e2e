@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The painted menus in the real client, wearing the pack Core builds — Core's house style, the shop's stall, the
- * owner's workshop and the adventurers' skill tree:
+ * owner's workshop and a skill's tree:
  * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=MenuLooksScreenshotsTest}.
  */
 @Tag("screenshots")
@@ -26,7 +26,7 @@ class MenuLooksScreenshotsTest {
     @DisplayName("every style of painted menu, as a player wearing the pack sees it")
     void menus() throws java.io.IOException {
         try (Server server = Server.start("menu-looks", List.of("economy-standalone:RainsEconomy-.*",
-                "dnd-standalone:RainsAdventurers-.*"), List.of("The economy is up", "Adventurers are up"))) {
+                "skills-standalone:RainsSkills-.*"), List.of("The economy is up", "Skills are up"))) {
             server.console("forceload add -32 -32 32 32");
             server.console("fill -16 63 -16 16 63 16 minecraft:polished_deepslate");
             server.console("fill -16 64 -16 16 80 16 minecraft:air");
@@ -59,18 +59,18 @@ class MenuLooksScreenshotsTest {
                 Bot scout = server.player("Scout");
                 server.console("gamemode spectator Scout");
                 server.console("tp Scout 20 80 20");
-                server.console("adventurer admin level Viewer 9");
-                server.console("adventurer admin level Scout 9");
-                scout.runAndOpen("adventurer", "Vitality");
-                server.console("e2e as Viewer adventurer");
+                server.console("skills admin level Viewer 9");
+                server.console("skills admin level Scout 9");
+                scout.runAndOpen("skills defense", "Defense");
+                server.console("e2e as Viewer skills defense");
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("menus-6-skill-tree.png"));
-                int next = scout.window().flatMap(window -> window.slotNamed("Next page")).orElseThrow();
+                int next = scout.window().flatMap(window -> window.slotNamed("▼ Down")).orElseThrow();
                 server.console("e2e click Viewer " + next);
                 Await.ticks(40);
-                viewer.screenshot(shots.resolve("menus-7-skill-tree-might.png"));
+                viewer.screenshot(shots.resolve("menus-7-skill-tree-scrolled.png"));
 
-                assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy", "RainsAdventurers")).isEmpty();
+                assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy", "RainsSkills")).isEmpty();
                 String log = Files.readString(E2e.out().resolve("client-Viewer").resolve("client.log"));
                 assertThat(log).as("the client found every painting and model")
                         .doesNotContain("rainscore:").doesNotContain("rainseconomy:").doesNotContain("rainsadventurers:");

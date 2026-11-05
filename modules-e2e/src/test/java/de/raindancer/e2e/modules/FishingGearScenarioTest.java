@@ -42,7 +42,15 @@ class FishingGearScenarioTest {
 
             // fixed spots: put down for good, nothing else on top of them, listed, taken away
             ada.forgetChat();
-            ada.run("fishing spot create epic 6");
+            // Asked again if the first went unanswered: the water filled just before may not be there for it yet.
+            for (int tries = 0; tries < 3 && !said(ada, "for good"); tries++) {
+                ada.run("fishing spot create epic 6");
+                try {
+                    Await.until("the fixed spot is out", Duration.ofSeconds(4), () -> said(ada, "for good"));
+                } catch (AssertionError notYet) {
+                    Await.ticks(20);
+                }
+            }
             Await.until("the fixed spot is out", Duration.ofSeconds(10), () -> said(ada, "for good"));
             assertThat(ada.chatText()).anyMatch(line -> line.contains("Abyss Shoal") && line.contains("6 blocks"));
             ada.forgetChat();
@@ -54,6 +62,48 @@ class FishingGearScenarioTest {
 
             // bait: one off the off hand per cast
             server.console("clear Ada");
+            // /give is Core's: fishing's own items by key, everything else still vanilla's
+            ada.run("give Ada fishing:rod-void");
+            Bot.Item rod = ada.expectItem("the Void Rod from /give", item -> item.tags()
+                    .getOrDefault("rainscore:custom-item", "").equals("fishing:rod-void"));
+            assertThat(rod.is("fishing_rod")).isTrue();
+            ada.run("give Ada fishing:bait-starlure 3");
+            ada.expectItem("Starlure from /give", item -> item.name().contains("Starlure") && item.amount() == 3);
+            // a typo is answered with the likely item and a button that runs the corrected give
+            ada.forgetChat();
+            ada.run("give Ada fishing:rod-viod");
+            ada.expectChat("Did you mean fishing:rod-void");
+            int rods = (int) ada.items().stream().filter(item -> item.tags()
+                    .getOrDefault("rainscore:custom-item", "").equals("fishing:rod-void")).count();
+            ada.clickChat("give Ada fishing:rod-void");
+            Await.until("the button gives the rod", Duration.ofSeconds(10), () -> ada.items().stream()
+                    .filter(item -> item.tags().getOrDefault("rainscore:custom-item", "").equals("fishing:rod-void"))
+                    .count() > rods);
+            // vanilla's items get the same help: a typo is answered, and the button gives the real thing
+            ada.forgetChat();
+            ada.run("give Ada diamnd 3");
+            ada.expectChat("Did you mean diamond");
+            ada.clickChat("give Ada diamond 3");
+            ada.expectItem("diamonds through the button", item -> item.is("diamond") && item.amount() == 3);
+            ada.run("give Ada diamond 2");
+            ada.expectItem("vanilla diamonds through /give", item -> item.is("diamond") && item.amount() == 5);
+            // /give … search: a page of every item that answers, typos forgiven; shift-click gives a stack
+            Bot.Window found = ada.runAndOpen("give Ada search diamnd", "diamnd").window().orElseThrow();
+            assertThat(found.slotNamed("Void Rod")).isEmpty();
+            int diamondsBefore = ada.items().stream().filter(item -> item.is("diamond")).mapToInt(Bot.Item::amount).sum();
+            int diamond = found.top().entrySet().stream().filter(slot -> slot.getValue().is("diamond"))
+                    .mapToInt(java.util.Map.Entry::getKey).min().orElseThrow();
+            assertThat(diamond).as("the closest match first, typo and all").isZero();
+            ada.shiftClickSlot(diamond);
+            Await.until("a stack of the best match comes", Duration.ofSeconds(10), () -> ada.items().stream()
+                    .filter(item -> item.is("diamond")).mapToInt(Bot.Item::amount).sum() == diamondsBefore + 64);
+            ada.closeWindow();
+            Bot.Window rodSearch = ada.runAndOpen("give Ada search void rod", "void rod").window().orElseThrow();
+            assertThat(rodSearch.slotNamed("Void Rod")).as("plugin items are found by name too").isPresent();
+            ada.closeWindow();
+            // what /give handed out goes again: the bait below is the only bait, and the vanilla rod the only plain one
+            server.console("clear Ada");
+            Await.ticks(10);
             ada.run("fishing give Ada bait:voidlure 2");
             Bot.Item voidlure = ada.expectItem("a Voidlure", item -> item.name().contains("Voidlure"));
             assertThat(voidlure.lore()).anyMatch(line -> line.contains("Mythic catches"));

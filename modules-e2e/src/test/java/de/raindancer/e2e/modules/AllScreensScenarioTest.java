@@ -32,7 +32,7 @@ class AllScreensScenarioTest {
             "shops-standalone:RainsShops-.*", "ranks-standalone:RainsRanks-.*", "roles-standalone:RainsRoles-.*",
             "essentials-standalone:RainsEssentials-.*", "moderation-standalone:RainsModeration-.*",
             "playerutils-standalone:RainsPlayerUtils-.*", "twitch-standalone:RainsTwitch-.*",
-            "dnd-standalone:RainsAdventurers-.*", "rift-standalone:RainsRift-.*");
+            "skills-standalone:RainsSkills-.*", "rift-standalone:RainsRift-.*");
 
     /** At least these, one or more from each plugin — the rest are found in the list itself. */
     private static final List<String> EXPECTED = List.of("welcome", "online", "server-status", "chart-tps",
@@ -97,7 +97,7 @@ class AllScreensScenarioTest {
                     .as("no screen fails to make its text").isEmpty();
             assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy", "RainsGuilds", "RainsJobs",
                     "RainsExtendedClaims", "RainsHomes", "RainsWarps", "RainsShops", "RainsRanks", "RainsRoles",
-                    "RainsEssentials", "RainsModeration", "RainsPlayerUtils", "RainsTwitch", "RainsAdventurers",
+                    "RainsEssentials", "RainsModeration", "RainsPlayerUtils", "RainsTwitch", "RainsSkills",
                     "RainsRift"))
                     .isEmpty();
         }

@@ -15,11 +15,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * RainsAdventurers' own looks in the real client, wearing the pack Core builds:
- * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=AdventurersLooksScreenshotsTest}.
+ * RainsSkills' own looks in the real client, wearing the pack Core builds:
+ * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=SkillsLooksScreenshotsTest}.
  */
 @Tag("screenshots")
-class AdventurersLooksScreenshotsTest {
+class SkillsLooksScreenshotsTest {
 
     private static final List<String> WALL = List.of("potion_of_healing", "potion_of_greater_healing",
             "potion_of_superior_healing", "potion_of_supreme_healing", "potion_of_heroism", "potion_of_speed",
@@ -37,7 +37,7 @@ class AdventurersLooksScreenshotsTest {
         server.console("kill @e[type=minecraft:item_frame]");
         server.console("clear Viewer");
         for (String item : items) {
-            server.console("adventurer admin give Viewer " + item);
+            server.console("skills admin give Viewer " + item);
         }
         Await.ticks(20);
         for (int i = 0; i < items.size(); i++) {
@@ -54,8 +54,8 @@ class AdventurersLooksScreenshotsTest {
     @Test
     @DisplayName("magic items on a wall, in the hotbar and in hand; the skill tree with its art")
     void looks() throws java.io.IOException {
-        try (Server server = Server.start("adventurers-looks", List.of("dnd-standalone:RainsAdventurers-.*"),
-                List.of("Adventurers are up"))) {
+        try (Server server = Server.start("skills-looks", List.of("skills-standalone:RainsSkills-.*"),
+                List.of("Skills are up"))) {
             server.console("forceload add -32 -32 32 32");
             server.console("fill -16 63 -16 16 63 16 minecraft:polished_deepslate");
             server.console("fill -16 64 -16 16 80 16 minecraft:air");
@@ -91,7 +91,7 @@ class AdventurersLooksScreenshotsTest {
                 server.console("kill @e[type=minecraft:item_frame]");
                 server.console("clear Viewer");
                 for (String item : WALL) {
-                    server.console("adventurer admin give Viewer " + item);
+                    server.console("skills admin give Viewer " + item);
                 }
                 server.console("tp Viewer 0.5 64 0.5 180 10");
                 server.console("item replace entity Viewer weapon.mainhand from entity Viewer hotbar.6");
@@ -99,10 +99,10 @@ class AdventurersLooksScreenshotsTest {
                 viewer.screenshot(shots.resolve("looks-4-hotbar-wand.png"));
 
                 // --- the skill tree with its medallions, chain and paintings ------------------------------------------
-                server.console("adventurer admin level Viewer 17");
-                server.console("adventurer admin level Scout 17");
-                scout.runAndOpen("adventurer", "Vitality");
-                server.console("e2e as Viewer adventurer");
+                server.console("skills admin level Viewer 17");
+                server.console("skills admin level Scout 17");
+                scout.runAndOpen("skills defense", "Defense");
+                server.console("e2e as Viewer skills defense");
                 Await.ticks(40);
                 for (String node : List.of("Toughness", "Hardened", "Big Heart", "Stoneskin")) {
                     int at = slot(scout, node);
@@ -113,9 +113,9 @@ class AdventurersLooksScreenshotsTest {
                 }
                 viewer.screenshot(shots.resolve("looks-5-tree.png"));
                 viewer.screenshotHovering(shots.resolve("looks-6-tree-node.png"), slot(scout, "Big Heart"));
-                viewer.screenshotHovering(shots.resolve("looks-7-tree-summary.png"), slot(scout, "Vitality"));
+                viewer.screenshotHovering(shots.resolve("looks-7-tree-summary.png"), slot(scout, "Defense"));
 
-                assertThat(server.paper.errorsFrom("RainsCore", "RainsAdventurers")).isEmpty();
+                assertThat(server.paper.errorsFrom("RainsCore", "RainsSkills")).isEmpty();
                 String log = Files.readString(E2e.out().resolve("client-Viewer").resolve("client.log"));
                 assertThat(log).as("the client found every model and texture").doesNotContain("rainsadventurers:");
             }

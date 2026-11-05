@@ -60,7 +60,7 @@ class FishingScreensScenarioTest {
             assertThat(skills.slotNamed("Quick Bite")).isPresent();
             assertThat(lore(skills, "Swift Reel")).contains("Needs a node next to it first.");
             Await.ticks(10);
-            ada.click("Quick Bite");
+            clickNode(ada, "Quick Bite", () -> named(ada, "Quick Bite").contains("1/5"));
             Await.until("Quick Bite rank 1", WAIT, () -> named(ada, "Quick Bite").contains("1/5"));
             ada.click("Swift Reel");
             Await.until("Swift Reel taken", WAIT, () -> named(ada, "Swift Reel").contains("1/3"));
@@ -74,6 +74,10 @@ class FishingScreensScenarioTest {
             assertThat(ada.chatText()).anyMatch(line -> line.contains("Frenzy") && line.contains("Shut"));
             skills = ada.window().orElseThrow();
             dump("2-skills", skills);
+            // The tree runs one column past the window, to its mastery badge: the arrow scrolls there first, then turns.
+            ada.click("Right ▶");
+            Await.until("scrolled to the badge", WAIT, () -> ada.window().map(window -> window.slotNamed("Tide Master")
+                    .isPresent()).orElse(false));
             ada.click("Next page");
             Bot.Window treasure = ada.awaitWindow("Treasure Hunter");
             assertThat(treasure.slotNamed("Treasure Sense")).isPresent();
@@ -139,5 +143,20 @@ class FishingScreensScenarioTest {
             }
         }
         return out.append('"').toString();
+    }
+
+    /** A click on a node, sent again only if it went unanswered — no rank and no word of it in chat, so never twice. */
+    private static void clickNode(Bot bot, String node, java.util.function.BooleanSupplier taken) {
+        for (int tries = 0; tries < 3; tries++) {
+            int said = bot.chatText().size();
+            bot.click(node);
+            try {
+                Await.until(node + " answered", java.time.Duration.ofSeconds(3),
+                        () -> taken.getAsBoolean() || bot.chatText().stream().skip(said).anyMatch(line -> line.contains(node)));
+                return;
+            } catch (AssertionError unanswered) {
+                // the click was dropped as the window opened; send it again
+            }
+        }
     }
 }

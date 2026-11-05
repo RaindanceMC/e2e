@@ -34,8 +34,8 @@ class MachPotionScenarioTest {
     @Test
     @DisplayName("brewed from a dragon head, drunk mid-glide: 600 blocks a second where one looks, and the server keeps up")
     void mach() {
-        try (Server server = Server.start("mach", List.of("dnd-standalone:RainsAdventurers-.*"),
-                List.of("Adventurers are up"))) {
+        try (Server server = Server.start("mach", List.of("skills-standalone:RainsSkills-.*"),
+                List.of("Skills are up"))) {
             server.console("gamerule spawn_mobs false");
             assertThat(server.console("settings set mach.seconds 5")).contains("is now");
             server.console("forceload add -16 -16 16 16");
