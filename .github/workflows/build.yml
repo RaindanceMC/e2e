@@ -216,6 +216,7 @@ jobs:
           fetch dnd-standalone RainsAdventurers
           fetch rift-standalone RainsRift
           fetch network-proxy RainsNetworkProxy
+          fetch discordlink-standalone RainsDiscordLink
           fetch speedrun-bundle RainsSpeedrunServer
           fetch yeuksmp YeukSMP
 
