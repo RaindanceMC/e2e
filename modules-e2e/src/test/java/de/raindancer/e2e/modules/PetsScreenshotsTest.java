@@ -273,6 +273,147 @@ class PetsScreenshotsTest {
         }
     }
 
+    /**
+     * Pets keeping out of each other's way: three follow their owner each at a spot of its own and never on top of
+     * each other; resting while he stands still, they spread out — two may cuddle up — and a fierce pet squares up to
+     * another player's for show, nobody hurt — {@code -Dtest=PetsScreenshotsTest#spacing}.
+     */
+    @Test
+    @DisplayName("pets keep their own spots, cuddle up and squabble without hurting anybody")
+    void spacing() throws Exception {
+        try (Server server = Server.start("pets-spacing", List.of("pets-standalone:RainsPets-.*"),
+                List.of("Pets is up"))) {
+            server.console("forceload add -48 -48 48 48");
+            server.console("fill -40 63 -40 40 63 40 minecraft:grass_block");
+            server.console("fill -40 64 -40 40 90 40 minecraft:air");
+            server.console("gamerule advance_time false");
+            server.console("gamerule spawn_mobs false");
+            server.console("time set 6000");
+            server.console("weather clear");
+            assertThat(server.console("settings set pets.out-at-once 3")).contains("is now");
+            Await.ticks(40);
+
+            de.raindancer.e2e.Bot tom = server.paper.bot("Raindancer118").join();
+            de.raindancer.e2e.Bot bob = server.paper.bot("Bob").join();
+            server.console("tp Raindancer118 0.5 64 0.5 0 0");
+            server.console("tp Bob 6.5 64 0.5 90 0");
+            for (String[] gift : new String[][]{{"Raindancer118", "wolf", "Rex"}, {"Raindancer118", "fox", "Ember"},
+                    {"Raindancer118", "parrot", "Kiwi"}, {"Bob", "wolf", "Brute"}}) {
+                server.console("pets admin give " + gift[0] + " " + gift[1] + " " + gift[2]);
+            }
+            Await.ticks(20);
+            server.console("pets admin personality Raindancer118 Rex fierce");
+            server.console("pets admin personality Bob Brute fierce");
+            for (String pet : List.of("Rex", "Ember", "Kiwi")) {
+                server.console("e2e as Raindancer118 pets call " + pet);
+            }
+            server.console("e2e as Bob pets call Brute");
+            Await.ticks(60);
+            tom.chat().forEach(line -> System.out.println("TOM SAW: " + line.text()));
+            bob.chat().forEach(line -> System.out.println("BOB SAW: " + line.text()));
+
+            try (RealClient viewer = RealClient.join(server.paper, "Viewer")) {
+                Path shots = E2e.out().resolve("screenshots");
+                viewer.click(484, 408);
+                Await.ticks(200);
+                server.console("gamemode spectator Viewer");
+
+                // 1. following: Tom walks off; his three pets keep spots of their own behind him
+                double closest = Double.MAX_VALUE;
+                for (int step = 1; step <= 10; step++) {
+                    server.console("tp Raindancer118 0.5 64 " + (0.5 - step * 2) + " 180 0");
+                    Await.ticks(12);
+                    if (step >= 4) {
+                        closest = Math.min(closest, closestPair(server, List.of("wolf:Rex", "fox:Ember", "parrot:Kiwi")));
+                    }
+                    if (step == 8) {
+                        server.console("tp Viewer 0.5 70 -10.5 180 50");
+                        Await.ticks(5);
+                        viewer.screenshot(shots.resolve("pets-spacing-1-following.png"));
+                    }
+                }
+                Await.ticks(30);
+                closest = Math.min(closest, closestPair(server, List.of("wolf:Rex", "fox:Ember", "parrot:Kiwi")));
+                System.out.println("CLOSEST WHILE FOLLOWING " + closest);
+                assertThat(closest).as("never on top of each other while following").isGreaterThan(0.5);
+
+                // 2. resting: Tom stands still; they settle apart — cuddled up at most, never on top of each other
+                double resting = Double.MAX_VALUE;
+                for (int i = 0; i < 30; i++) {
+                    Await.ticks(20);
+                    resting = Math.min(resting, closestPair(server, List.of("wolf:Rex", "fox:Ember", "parrot:Kiwi")));
+                }
+                System.out.println("CLOSEST WHILE RESTING " + resting);
+                server.console("tp Viewer 0.5 75 -12.5 180 65");
+                Await.ticks(10);
+                viewer.screenshot(shots.resolve("pets-spacing-2-resting.png"));
+                assertThat(resting).as("resting, never on top of each other").isGreaterThan(0.25);
+
+                // 3. squabbling: Rex and Bob's Brute, both fierce, near each other — for show, nobody hurt
+                server.console("e2e as Raindancer118 pets home Ember");
+                server.console("e2e as Raindancer118 pets home Kiwi");
+                server.console("tp Bob 4.5 64 -19.5 90 0");
+                Await.ticks(40);
+                double rexBefore = named(server, "wolf", "Rex", "Health")[0];
+                double bruteBefore = named(server, "wolf", "Brute", "Health")[0];
+                double nearest = Double.MAX_VALUE;
+                boolean shot = false;
+                for (int i = 0; i < 60; i++) {
+                    Await.ticks(20);
+                    double[] rex = named(server, "wolf", "Rex", "Pos");
+                    double[] brute = named(server, "wolf", "Brute", "Pos");
+                    double apart = Math.hypot(rex[0] - brute[0], rex[2] - brute[2]);
+                    nearest = Math.min(nearest, apart);
+                    if (!shot && apart < 1.6) {
+                        server.console(String.format(java.util.Locale.ROOT, "tp Viewer %.2f 66.5 %.2f 0 30",
+                                (rex[0] + brute[0]) / 2, (rex[2] + brute[2]) / 2 - 3.5));
+                        Await.ticks(10);
+                        viewer.screenshot(shots.resolve("pets-spacing-3-squabble.png"));
+                        shot = true;
+                    }
+                }
+                System.out.println("REX AND BRUTE CAME WITHIN " + nearest);
+                assertThat(named(server, "wolf", "Rex", "Health")[0]).as("Rex unhurt").isGreaterThanOrEqualTo(rexBefore);
+                assertThat(named(server, "wolf", "Brute", "Health")[0]).as("Brute unhurt")
+                        .isGreaterThanOrEqualTo(bruteBefore);
+
+                assertThat(server.paper.errorsFrom("RainsCore", "RainsPets")).isEmpty();
+            }
+        }
+    }
+
+    /** The nearest two of these pets ({@code type:name}) come to each other on the flat, of those level with each other. */
+    private static double closestPair(Server server, List<String> pets) {
+        List<double[]> at = new ArrayList<>();
+        for (String pet : pets) {
+            at.add(named(server, pet.split(":")[0], pet.split(":")[1], "Pos"));
+        }
+        double closest = Double.MAX_VALUE;
+        for (int i = 0; i < at.size(); i++) {
+            for (int j = i + 1; j < at.size(); j++) {
+                double[] a = at.get(i);
+                double[] b = at.get(j);
+                if (Math.abs(a[1] - b[1]) < 1.5) {
+                    closest = Math.min(closest, Math.hypot(a[0] - b[0], a[2] - b[2]));
+                }
+            }
+        }
+        return closest;
+    }
+
+    /** A pet's numbers, found by its name: its position (three) or its health (one, first). */
+    private static double[] named(Server server, String type, String name, String path) {
+        String said = server.console("data get entity @e[type=minecraft:" + type + ",name=" + name + ",limit=1] "
+                + path);
+        java.util.regex.Matcher numbers = NUMBER.matcher(said);
+        double[] found = new double[3];
+        for (int i = 0; i < (path.equals("Pos") ? 3 : 1); i++) {
+            assertThat(numbers.find()).as(path + " of " + name + " in: " + said).isTrue();
+            found[i] = Double.parseDouble(numbers.group(1));
+        }
+        return found;
+    }
+
     private static final java.util.regex.Pattern NUMBER = java.util.regex.Pattern.compile("(-?\\d+(?:\\.\\d+)?(?:E-?\\d+)?)[dfF]");
 
     private static double[] position(Server server, String type) {
