@@ -215,6 +215,7 @@ jobs:
           fetch speedrun-standalone RainsSpeedrun
           fetch skills-standalone RainsSkills
           fetch fishing-standalone RainsFishing
+          fetch pets-standalone RainsPets
           fetch rift-standalone RainsRift
           fetch network-proxy RainsNetworkProxy
           fetch discordlink-standalone RainsDiscordLink

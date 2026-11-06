@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the rider looks — they wither the zombies ahead, leave the villager beside them alone and break no block; a second
  * swing right after waits for the cooldown. Only Core and RainsPets — {@code -Dtest=PetAbilityScenarioTest}.
  */
+@org.junit.jupiter.api.Tag("e2e")
 class PetAbilityScenarioTest {
 
     @Test
