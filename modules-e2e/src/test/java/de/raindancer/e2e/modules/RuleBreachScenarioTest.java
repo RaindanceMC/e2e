@@ -46,14 +46,21 @@ class RuleBreachScenarioTest {
             Await.until(() -> "Bo is muted (Bo heard " + bo.chatText() + ")", WAIT, () -> said(bo, "muted"));
 
             // The third time from the player's page, through the confirmation.
+            int shown = ada.dialogsShown();
             ada.run("mod Bo");
-            ada.click("Broke a rule");
-            ada.awaitWindow("Which rule");
-            Await.until("the page says what is next", WAIT, () -> ada.window()
-                    .map(window -> window.items().values().stream().anyMatch(item -> item.lore().stream()
-                            .anyMatch(line -> line.contains("Now: muted for 1 day")))).orElse(false));
-            ada.click("1. Be kind");
-            ada.click("Yes, do it");
+            ada.awaitDialog(shown, WAIT);
+            shown = ada.dialogsShown();
+            ada.pressDialogButton("Punish", java.util.Map.of());
+            ada.awaitDialog(shown, WAIT);
+            shown = ada.dialogsShown();
+            ada.pressDialogButton("Broke a rule", java.util.Map.of());
+            var rules = ada.awaitDialog(shown, WAIT);
+            assertThat(rules.button("1. Be kind").orElseThrow().tooltip()).as("the window says what is next")
+                    .contains("Now: muted for 1 day");
+            shown = ada.dialogsShown();
+            ada.pressDialogButton("1. Be kind", java.util.Map.of());
+            ada.awaitDialog(shown, WAIT);
+            ada.pressDialogButton("Yes, do it", java.util.Map.of());
             Await.until("the third rung is handed out", WAIT, () -> said(ada, "for the 3rd time: muted for 1 day"));
 
             // The owner changes what a rule costs; the next offence follows the new ladder.

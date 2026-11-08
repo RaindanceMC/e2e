@@ -53,15 +53,19 @@ class ReportsScenarioTest {
             cy.say("nobody asked you, loser");
             Await.ticks(10);
 
-            // Bo reports: the kind of thing, then the exact reason, then a line typed into chat.
+            // Bo reports: the kind of thing, then the exact reason and what happened, in one window.
+            int shown = bo.dialogsShown();
             bo.run("report Cy");
-            bo.awaitWindow("Report Cy");
-            assertThat(button(bo, "Chat & behaviour")).contains("Harassment or bullying").contains("Hate speech");
-            bo.clickSlot(slotNamed(bo, "Chat & behaviour"));
-            bo.awaitWindow("Chat");
-            bo.clickSlot(slotNamed(bo, "Harassment or bullying"));
-            expect(bo, "Bo is asked what happened", "What happened?");
-            bo.say("he insults me every time I say hello");
+            var kinds = bo.awaitDialog(shown, WAIT);
+            assertThat(kinds.title()).contains("Report Cy");
+            assertThat(kinds.button("Chat & behaviour").orElseThrow().tooltip()).contains("Harassment or bullying")
+                    .contains("Hate speech");
+            shown = bo.dialogsShown();
+            bo.pressDialogButton("Chat & behaviour", java.util.Map.of());
+            var form = bo.awaitDialog(shown, WAIT);
+            assertThat(form.inputs()).containsExactly("reason", "what");
+            bo.pressDialogButton("Send the report", java.util.Map.of("reason", "harassment",
+                    "what", "he insults me every time I say hello"));
             expect(bo, "Bo's report is filed", "Reported.");
             expect(ada, "staff hear of it with a link to open it", "[Open]");
 
@@ -69,6 +73,7 @@ class ReportsScenarioTest {
             cy.run("mod report R1");
             Await.ticks(20);
             assertThat(cy.window()).as("no report card for a player").isEmpty();
+            assertThat(cy.dialog()).as("not as a dialog either").isEmpty();
 
             // The hub says how many wait and how bad the worst is.
             ada.run("mod reports");
@@ -81,27 +86,27 @@ class ReportsScenarioTest {
                     .contains("he insults me").contains("every time I say hello").contains("Filed by Bo, just now");
 
             // The card: everything on it.
+            shown = ada.dialogsShown();
             ada.clickSlot(slotNamed(ada, "Cy"));
-            ada.awaitWindow("Report");
-            assertThat(button(ada, "High")).contains("Harassment or bullying is high on its own");
-            assertThat(button(ada, "What they wrote")).contains("he insults me").contains("every time I say hello");
-            assertThat(button(ada, "When, and where it stands")).contains("Filed").contains("Waiting");
-            assertThat(button(ada, "Where it was reported")).contains("world");
-            assertThat(button(ada, "Chat around it")).contains("This report is about chat");
+            var card = ada.awaitDialog(shown, WAIT);
+            assertThat(card.title()).contains("Report R1");
+            assertThat(card.text()).contains("High").contains("Harassment or bullying").contains("he insults me")
+                    .contains("every time I say hello").contains("Filed").contains("Waiting");
+            assertThat(card.button("Where it was reported").orElseThrow().tooltip()).contains("world");
+            assertThat(card.button("Chat around it").orElseThrow().tooltip()).contains("This report is about chat");
 
-            ada.clickSlot(slotNamed(ada, "Chat around it"));
+            ada.pressDialogButton("Chat around it", java.util.Map.of());
             ada.awaitWindow("Chat around");
             assertThat(button(ada, "nobody asked you")).contains("The reported player").contains("s before the report");
             assertThat(button(ada, "hey cy")).contains("Who filed the report");
             ada.closeWindow();
 
             // Dealt with, from the card; the reporter is told.
+            shown = ada.dialogsShown();
             ada.run("mod report R1");
-            ada.awaitWindow("Report");
-            ada.clickSlot(slotNamed(ada, "Dealt with"));
-            expect(ada, "Ada is asked what she did", "Type what you did");
+            ada.awaitDialog(shown, WAIT);
             bo.forgetChat();
-            ada.say("warned him for insults");
+            ada.pressDialogButton("Dealt with", java.util.Map.of("outcome", "warned him for insults"));
             expect(bo, "Bo hears what became of it", "warned him for insults");
 
             ada.run("mod reports");
@@ -116,9 +121,10 @@ class ReportsScenarioTest {
             // Search by name.
             ada.run("mod reports");
             ada.awaitWindow("Reports");
+            int asked = ada.dialogsShown();
             ada.clickSlot(slotNamed(ada, "Search by name"));
-            expect(ada, "Ada is asked for a name", "Type a player's name");
-            ada.say("cy");
+            ada.awaitDialog(asked, WAIT);
+            ada.pressDialogButton("Use", java.util.Map.of("answer", "cy"));
             ada.awaitWindow("Cy");
             assertThat(button(ada, "Cy")).contains("Harassment or bullying");
 
