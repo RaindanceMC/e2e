@@ -77,7 +77,16 @@ class UsabilityScreenshotsTest {
                 clickSlot(server, 1 * 9 + 1);
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("usability-11-guild-name-window.png"));
-                assertThat(shots.resolve("usability-11-guild-name-window.png")).exists();
+                // Cancel sits at the bottom right of the dialog at GUI scale 2 on this display.
+                viewer.click(768, 688);
+                Await.ticks(40);
+
+                // ── leaving the guild: the question in the game's own dialog ──────────────────────────
+                clickSlot(server, 5 * 9);
+                clickSlot(server, 5 * 9 + 4);
+                Await.ticks(40);
+                viewer.screenshot(shots.resolve("usability-12-leave-guild-dialog.png"));
+                assertThat(shots.resolve("usability-12-leave-guild-dialog.png")).exists();
             }
         }
     }
