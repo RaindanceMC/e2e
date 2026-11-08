@@ -58,7 +58,11 @@ class UsabilityScreenshotsTest {
                 clickSlot(server, 1 * 9 + 0);
                 viewer.screenshot(shots.resolve("usability-7-shop-drawer.png"));
 
-                // ── the hub, a feature's page, a command's page with Back to the hub ────────────────
+                // ── the hub: a feature's door is its page in one click, Back comes here ─────────────
+                clickSlot(server, 5 * 9 + 8);
+                server.console("e2e as Viewer hub");
+                Await.ticks(60);
+                viewer.screenshot(shots.resolve("usability-7b-hub.png"));
                 clickSlot(server, 5 * 9 + 8);
                 server.console("e2e as Viewer hub economy");
                 Await.ticks(60);
@@ -80,6 +84,19 @@ class UsabilityScreenshotsTest {
                 // Cancel sits at the bottom right of the dialog at GUI scale 2 on this display.
                 viewer.click(768, 688);
                 Await.ticks(40);
+
+                // ── the player's own sidebar: hide the lottery, move the guild up ──────────────────────
+                clickSlot(server, 5 * 9);
+                clickSlot(server, 5 * 9 + 8);
+                server.console("e2e as Viewer bank sidebar");
+                Await.ticks(60);
+                viewer.screenshot(shots.resolve("usability-13-sidebar-menu.png"));
+                clickSlot(server, 1 * 9 + 3);
+                Await.ticks(40);
+                viewer.screenshot(shots.resolve("usability-14-sidebar-lottery-hidden.png"));
+                clickSlot(server, 5 * 9 + 8);
+                server.console("e2e as Viewer guild");
+                Await.ticks(60);
 
                 // ── leaving the guild: the question in the game's own dialog ──────────────────────────
                 clickSlot(server, 5 * 9);
