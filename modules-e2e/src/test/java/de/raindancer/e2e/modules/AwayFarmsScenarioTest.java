@@ -3,6 +3,7 @@ package de.raindancer.e2e.modules;
 import de.raindancer.e2e.Await;
 import de.raindancer.e2e.Bot;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * gold it was given is not lost but handed back to try again. Wheat grows next to the active player and stands still
  * next to the away one.
  */
+@Tag("e2e")
 class AwayFarmsScenarioTest {
 
     private static final Pattern COUNT = Pattern.compile("count: (\\d+)", Pattern.CASE_INSENSITIVE);
