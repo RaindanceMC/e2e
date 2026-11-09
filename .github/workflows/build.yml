@@ -199,6 +199,7 @@ jobs:
           fetch ctf-standalone RainsCaptureTheFlag
           fetch enchants-standalone RainsEnchants
           fetch performance-standalone RainsPerformanceOptimizer
+          fetch afkcam-standalone RainsAfkCam
           fetch economy-standalone RainsEconomy
           fetch shops-standalone RainsShops
           fetch roles-standalone RainsRoles
