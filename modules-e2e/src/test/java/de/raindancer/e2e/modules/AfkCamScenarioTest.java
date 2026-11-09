@@ -3,7 +3,9 @@ package de.raindancer.e2e.modules;
 import de.raindancer.e2e.Await;
 import de.raindancer.e2e.Bot;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
+import org.geysermc.mcprotocollib.protocol.data.game.level.sound.SoundCategory;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSetCameraPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSoundEntityPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundAddEntityPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundEntityPositionSyncPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityPosPacket;
@@ -38,6 +40,7 @@ class AfkCamScenarioTest {
             Bot watcher = server.player("Watcher")
                     .record(ClientboundSetCameraPacket.class)
                     .record(ClientboundAddEntityPacket.class)
+                    .record(ClientboundSoundEntityPacket.class)
                     .record(ClientboundMoveEntityPosPacket.class)
                     .record(ClientboundMoveEntityPosRotPacket.class)
                     .record(ClientboundMoveEntityRotPacket.class)
@@ -51,6 +54,12 @@ class AfkCamScenarioTest {
             watcher.run("afkcam preview");
             int display = lookingThroughSomethingElse(watcher);
             assertThat(watcher.titles()).anyMatch(title -> title.contains("Away"));
+            assertThat(watcher.received(ClientboundSoundEntityPacket.class))
+                    .as("music from the camera itself, where the player hears from, on the jukebox slider (the game's "
+                            + "own background music on the music slider is kept quiet) — a client without the server's "
+                            + "pack gets the game's menu music")
+                    .anyMatch(sound -> sound.getEntityId() == display && sound.getCategory() == SoundCategory.RECORD
+                            && sound.getSound().getName().contains("music.menu"));
             Await.ticks(20);
             long moved = movesOf(watcher, display);
             Await.ticks(100);

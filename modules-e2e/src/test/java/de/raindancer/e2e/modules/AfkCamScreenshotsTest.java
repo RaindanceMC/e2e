@@ -36,10 +36,22 @@ class AfkCamScreenshotsTest {
             Await.ticks(60);
             try (RealClient viewer = RealClient.join(server.paper, "Viewer")) {
                 Path shots = E2e.out().resolve("screenshots");
-                Await.ticks(200);
+                // A camera before the pack has loaded — as right after joining — plays the game's menu music, and
+                // switches to the server's own tracks once the pack is in.
+                server.console("e2e as Viewer afkcam preview");
+                Await.ticks(40);
+                server.console("e2e as Viewer afkcam status");
+                Await.ticks(160);
                 viewer.click(484, 408);
                 Await.ticks(200);
                 viewer.click(484, 408);
+                Await.ticks(200);
+                server.console("e2e as Viewer afkcam status");
+                Await.ticks(20);
+                String early = java.nio.file.Files.readString(E2e.out().resolve("client-Viewer/client.log"));
+                assertThat(early).as("before the pack: the game's menu music").contains("Playing now: minecraft:music.menu");
+                assertThat(early).as("once the pack is in: over to the server's own track")
+                        .contains("Playing now: rainsafkcam:afk.evening_calm");
                 Await.ticks(100);
                 server.console("spreadplayers 40 40 0 1 false Viewer");
                 Await.ticks(100);
