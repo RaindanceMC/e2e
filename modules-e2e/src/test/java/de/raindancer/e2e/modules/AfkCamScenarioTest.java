@@ -5,6 +5,11 @@ import de.raindancer.e2e.Bot;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSetCameraPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundAddEntityPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundEntityPositionSyncPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityPosPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityPosRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundTeleportEntityPacket;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -32,7 +37,12 @@ class AfkCamScenarioTest {
             assertThat(server.log()).as("Core's camera fits this server").doesNotContain("cannot move a player's camera");
             Bot watcher = server.player("Watcher")
                     .record(ClientboundSetCameraPacket.class)
-                    .record(ClientboundAddEntityPacket.class);
+                    .record(ClientboundAddEntityPacket.class)
+                    .record(ClientboundMoveEntityPosPacket.class)
+                    .record(ClientboundMoveEntityPosRotPacket.class)
+                    .record(ClientboundMoveEntityRotPacket.class)
+                    .record(ClientboundTeleportEntityPacket.class)
+                    .record(ClientboundEntityPositionSyncPacket.class);
             Await.ticks(40);
             server.console("fill -4 98 -4 4 98 4 minecraft:stone");
             server.console("tp Watcher 0 99 0");
@@ -41,6 +51,11 @@ class AfkCamScenarioTest {
             watcher.run("afkcam preview");
             int display = lookingThroughSomethingElse(watcher);
             assertThat(watcher.titles()).anyMatch(title -> title.contains("Away"));
+            Await.ticks(20);
+            long moved = movesOf(watcher, display);
+            Await.ticks(100);
+            assertThat(movesOf(watcher, display)).as("between cuts the camera stands still — nothing to shake")
+                    .isEqualTo(moved);
             pressForward(watcher);
             backInOwnEyes(watcher);
             assertThat(server.console("data get entity Watcher playerGameType")).contains(": 0");
@@ -74,6 +89,16 @@ class AfkCamScenarioTest {
                 .as("and a mannequin to stand in for its own body, which the game does not draw to itself")
                 .anyMatch(added -> added.getType() == EntityType.MANNEQUIN);
         return camera;
+    }
+
+    /** Packets that move or turn {@code entity}; the server's "still here" with no movement does not count. */
+    private static long movesOf(Bot bot, int entity) {
+        return bot.received(ClientboundMoveEntityPosPacket.class).stream().filter(p -> p.getEntityId() == entity)
+                .filter(p -> p.getMoveX() != 0 || p.getMoveY() != 0 || p.getMoveZ() != 0).count()
+                + bot.received(ClientboundMoveEntityPosRotPacket.class).stream().filter(p -> p.getEntityId() == entity).count()
+                + bot.received(ClientboundMoveEntityRotPacket.class).stream().filter(p -> p.getEntityId() == entity).count()
+                + bot.received(ClientboundTeleportEntityPacket.class).stream().filter(p -> p.getId() == entity).count()
+                + bot.received(ClientboundEntityPositionSyncPacket.class).stream().filter(p -> p.getId() == entity).count();
     }
 
     private static void pressForward(Bot bot) {
