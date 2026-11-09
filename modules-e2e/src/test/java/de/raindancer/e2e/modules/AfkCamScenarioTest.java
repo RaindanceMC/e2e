@@ -11,6 +11,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.Clie
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityPosPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityPosRotPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundMoveEntityRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundSetEntityDataPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundTeleportEntityPacket;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -30,6 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("e2e")
 class AfkCamScenarioTest {
 
+    /** Entity data index of an entity's "silent" flag. */
+    private static final int SILENT_FLAG = 4;
+
     @Test
     @DisplayName("preview and going away both point the camera at a display; a key brings it back; survival throughout")
     void camera() {
@@ -41,6 +45,7 @@ class AfkCamScenarioTest {
                     .record(ClientboundSetCameraPacket.class)
                     .record(ClientboundAddEntityPacket.class)
                     .record(ClientboundSoundEntityPacket.class)
+                    .record(ClientboundSetEntityDataPacket.class)
                     .record(ClientboundMoveEntityPosPacket.class)
                     .record(ClientboundMoveEntityPosRotPacket.class)
                     .record(ClientboundMoveEntityRotPacket.class)
@@ -60,6 +65,12 @@ class AfkCamScenarioTest {
                             + "pack gets the game's menu music")
                     .anyMatch(sound -> sound.getEntityId() == display && sound.getCategory() == SoundCategory.RECORD
                             && sound.getSound().getName().contains("music.menu"));
+            assertThat(watcher.received(ClientboundSetEntityDataPacket.class).stream()
+                    .filter(data -> data.getEntityId() == display)
+                    .flatMap(data -> java.util.Arrays.stream(data.getMetadata()))
+                    .filter(entry -> entry.getId() == SILENT_FLAG))
+                    .as("the camera is not silent — a client drops every sound bound to a silent entity, the music too")
+                    .noneMatch(entry -> Boolean.TRUE.equals(entry.getValue()));
             Await.ticks(20);
             long moved = movesOf(watcher, display);
             Await.ticks(100);
