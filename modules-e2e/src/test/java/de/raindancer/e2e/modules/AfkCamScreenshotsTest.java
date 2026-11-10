@@ -51,7 +51,7 @@ class AfkCamScreenshotsTest {
                 String early = java.nio.file.Files.readString(E2e.out().resolve("client-Viewer/client.log"));
                 assertThat(early).as("before the pack: the game's menu music").contains("Playing now: minecraft:music.menu");
                 assertThat(early).as("once the pack is in: over to the server's own track")
-                        .contains("Playing now: rainsafkcam:afk.evening_calm");
+                        .contains("Playing now: rainsafkcam:music.evening_calm");
                 Await.ticks(100);
                 server.console("spreadplayers 40 40 0 1 false Viewer");
                 Await.ticks(100);
@@ -69,7 +69,7 @@ class AfkCamScreenshotsTest {
                 assertThat(shots.resolve("afkcam-4-overhead.png")).exists();
                 String clientLog = java.nio.file.Files.readString(E2e.out().resolve("client-Viewer/client.log"));
                 assertThat(clientLog).as("the camera plays the server's own track to a player wearing the pack")
-                        .contains("Playing now: rainsafkcam:afk.evening_calm");
+                        .contains("Playing now: rainsafkcam:music.evening_calm");
                 assertThat(clientLog).as("and the client knows that sound").doesNotContain("Unable to play unknown");
             }
         }
