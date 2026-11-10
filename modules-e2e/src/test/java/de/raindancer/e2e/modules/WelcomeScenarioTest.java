@@ -47,6 +47,7 @@ class WelcomeScenarioTest {
         String paperGlobal = VelocityProxy.paperGlobal(SECRET);
         PaperServer smp = PaperServer.forRun().seed(1).in(E2e.serverFolder("welcome-smp"))
                 .plugin(Path.of(System.getProperty("e2e.rainscore")))
+                .plugin(jar("welcome-standalone", "RainsWelcome-.*"))
                 .file("config/paper-global.yml", paperGlobal)
                 .file("plugins/RainsCore/network.yml", postgres.networkYml("smp", "survival")).build();
         PaperServer welcome = PaperServer.forRun().seed(1).in(E2e.serverFolder("welcome-welcome"))
@@ -74,6 +75,10 @@ class WelcomeScenarioTest {
 
         try (proxy; smp; welcome; postgres) {
             smp.start();
+            // On the SMP the welcome module only offers /trailer.
+            smp.console("settings set welcome:role network");
+            smp.restart();
+            smp.awaitLog("Welcome on a network server: /trailer sends players to welcome", WAIT);
             welcome.start();
             welcome.awaitLog("Welcome is up: newcomers are greeted and sent on to smp", WAIT);
             welcome.awaitLog("Intro: 3 shot\\(s\\), 0 track\\(s\\) of music", WAIT);
@@ -130,10 +135,16 @@ class WelcomeScenarioTest {
             Await.until("Ada left", WAIT, () -> !smp.console("list").contains("Ada"));
 
             // ── back again: straight to the SMP ─────────────────────────────────────────────────────────────────
-            smp.bot("Ada").through("localhost", proxy.port()).join();
+            Bot back = smp.bot("Ada").through("localhost", proxy.port()).join();
             Await.until("Ada is on the SMP at once", WAIT, () -> smp.console("list").contains("Ada"));
             assertThat(welcome.console("list")).doesNotContain("Ada");
             assertThat(proxy.log().split("Ada is new to the network", -1)).as("only new once").hasSize(2);
+
+            // ── /trailer on the SMP: over to the welcome server to watch it ─────────────────────────────────────
+            back.run("trailer");
+            Await.until("Ada went over for the trailer", WAIT, () -> welcome.console("list").contains("Ada"));
+            back.leave();
+            Await.until("Ada left", WAIT, () -> !welcome.console("list").contains("Ada"));
 
             // ── the welcome server down: a newcomer lands on the SMP instead of being turned away ───────────────
             welcome.stop();
