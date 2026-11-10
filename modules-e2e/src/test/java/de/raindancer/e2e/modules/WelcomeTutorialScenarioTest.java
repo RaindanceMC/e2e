@@ -28,8 +28,10 @@ class WelcomeTutorialScenarioTest {
         try (Server server = Server.start("welcome-tutorial", List.of("welcome-standalone:RainsWelcome-.*"),
                 List.of("Tutorial: 0 station"))) {
             Bot ada = server.admin("Ada");
-            ada.run("tutorial island generate");
-            Await.until("the island is built", WAIT, () -> text(ada).contains("tutorial island is built"));
+            // From the console: a fresh welcome server is set up before anybody has joined.
+            server.console("tutorial island generate");
+            Await.until("the island is built", WAIT,
+                    () -> server.console("execute in tutorial if block 0 63 0 minecraft:air").toLowerCase().contains("failed"));
             ada.run("tutorial station list");
             Await.until("all nine stations placed", WAIT, () -> text(ada).contains("rules"));
             assertThat(text(ada)).doesNotContain("not placed");
