@@ -1,0 +1,139 @@
+package de.raindancer.e2e.modules;
+
+import de.raindancer.e2e.Await;
+import de.raindancer.e2e.Bot;
+import de.raindancer.e2e.E2e;
+import de.raindancer.e2e.LocalPostgres;
+import de.raindancer.e2e.PaperServer;
+import de.raindancer.e2e.VelocityProxy;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Hyades' welcome server behind the proxy (RainsNetworkProxy 1.8.0 newcomers.server, RainsWelcome 0.1.0): a player
+ * the network has never seen lands on the welcome server — which runs on a database of its own — and /skip takes
+ * them on to the SMP; from then on they go straight there. With the welcome server down, a newcomer still lands on
+ * the SMP instead of being turned away.
+ */
+@Tag("e2e")
+class WelcomeScenarioTest {
+
+    private static final Duration WAIT = Duration.ofSeconds(60);
+    private static final String SECRET = "e2e-forwarding-secret";
+    private static final String WELCOME_DB = "rains_welcome";
+
+    @Test
+    @DisplayName("newcomer: welcome server first, /skip to the SMP, then always the SMP; welcome down: the SMP")
+    void newcomers() {
+        LocalPostgres postgres = LocalPostgres.start(E2e.serverFolder("welcome-postgres"));
+        sql(postgres, LocalPostgres.DATABASE, "CREATE DATABASE " + WELCOME_DB);
+        String paperGlobal = VelocityProxy.paperGlobal(SECRET);
+        PaperServer smp = PaperServer.forRun().seed(1).in(E2e.serverFolder("welcome-smp"))
+                .plugin(Path.of(System.getProperty("e2e.rainscore")))
+                .file("config/paper-global.yml", paperGlobal)
+                .file("plugins/RainsCore/network.yml", postgres.networkYml("smp", "survival")).build();
+        PaperServer welcome = PaperServer.forRun().seed(1).in(E2e.serverFolder("welcome-welcome"))
+                .plugin(Path.of(System.getProperty("e2e.rainscore")))
+                .plugin(jar("welcome-standalone", "RainsWelcome-.*"))
+                .file("config/paper-global.yml", paperGlobal)
+                .file("plugins/RainsCore/network.yml", postgres.networkYml("welcome", "welcome")
+                        .replace("database: " + LocalPostgres.DATABASE, "database: " + WELCOME_DB)).build();
+
+        Map<String, Integer> servers = new LinkedHashMap<>();
+        servers.put("smp", smp.port());
+        servers.put("welcome", welcome.port());
+        VelocityProxy proxy = VelocityProxy.in(E2e.serverFolder("welcome-proxy"), servers, SECRET)
+                .bind("[::]").plugin(jar("network-proxy", "RainsNetworkProxy-.*"));
+        proxy.file("plugins/rainsnetworkproxy/config.properties", "hub=smp\n"
+                + "database.host=127.0.0.1\ndatabase.port=" + postgres.port() + "\ndatabase.name=" + LocalPostgres.DATABASE
+                + "\ndatabase.user=" + LocalPostgres.USER + "\ndatabase.password=\ndatabase.sslmode=disable\n"
+                + "newcomers.server=welcome\n");
+
+        try (proxy; smp; welcome; postgres) {
+            smp.start();
+            welcome.start();
+            welcome.awaitLog("Welcome is up: newcomers are greeted and sent on to smp", WAIT);
+            proxy.start();
+            assertThat(proxy.log()).contains("Players new to the network go to welcome first");
+
+            // ── Ada, new: the welcome server, which writes nothing into the network's database ──────────────────
+            Bot ada = welcome.bot("Ada").through("localhost", proxy.port()).join();
+            Await.until("Ada is on the welcome server", WAIT, () -> welcome.console("list").contains("Ada"));
+            assertThat(proxy.log()).contains("Ada is new to the network: first to welcome");
+            Await.until("Ada was greeted", WAIT, () -> ada.titles().stream().anyMatch(t -> t.contains("Welcome to Hyades")));
+            assertThat(sql(postgres, LocalPostgres.DATABASE,
+                    "SELECT count(*) FROM core.network_first_seen WHERE player = '" + ada.id() + "'"))
+                    .as("the network has still not seen her").isEqualTo("0");
+            assertThat(sql(postgres, WELCOME_DB,
+                    "SELECT count(*) FROM core.network_first_seen WHERE player = '" + ada.id() + "'"))
+                    .as("the welcome server keeps its own records").isEqualTo("1");
+
+            // ── /skip: on to the SMP, through the proxy ─────────────────────────────────────────────────────────
+            ada.run("skip");
+            Await.until("Ada is on the SMP", WAIT, () -> smp.console("list").contains("Ada"));
+            Await.until("the network has seen her now", WAIT, () -> sql(postgres, LocalPostgres.DATABASE,
+                    "SELECT count(*) FROM core.network_first_seen WHERE player = '" + ada.id() + "'").equals("1"));
+            ada.leave();
+            Await.until("Ada left", WAIT, () -> !smp.console("list").contains("Ada"));
+
+            // ── back again: straight to the SMP ─────────────────────────────────────────────────────────────────
+            smp.bot("Ada").through("localhost", proxy.port()).join();
+            Await.until("Ada is on the SMP at once", WAIT, () -> smp.console("list").contains("Ada"));
+            assertThat(welcome.console("list")).doesNotContain("Ada");
+            assertThat(proxy.log().split("Ada is new to the network", -1)).as("only new once").hasSize(2);
+
+            // ── the welcome server down: a newcomer lands on the SMP instead of being turned away ───────────────
+            welcome.stop();
+            Bot bo = smp.bot("Bo").through("localhost", proxy.port()).join();
+            Await.until("Bo is on the SMP", WAIT, () -> smp.console("list").contains("Bo"));
+            assertThat(proxy.log()).contains("Bo: the welcome server could not be reached, on to smp");
+            assertThat(bo.isOnline()).isTrue();
+
+            assertThat(smp.errorsFrom("RainsCore").stream()
+                    .filter(line -> !line.contains("resource pack server could not start"))).isEmpty();
+        }
+    }
+
+    private static String sql(LocalPostgres postgres, String database, String query) {
+        try {
+            Process psql = new ProcessBuilder("psql", "-h", "127.0.0.1", "-p", String.valueOf(postgres.port()),
+                    "-U", LocalPostgres.USER, "-d", database, "-tA", "-v", "ON_ERROR_STOP=1", "-c", query)
+                    .redirectErrorStream(true).start();
+            String out = new String(psql.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
+            if (psql.waitFor() != 0) {
+                throw new AssertionError("psql: " + out);
+            }
+            return out;
+        } catch (IOException failed) {
+            throw new UncheckedIOException(failed);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(interrupted);
+        }
+    }
+
+    private static Path jar(String module, String pattern) {
+        Path folder = Path.of(System.getProperty("e2e.reactor")).resolve(module).resolve("target");
+        try (Stream<Path> jars = Files.list(folder)) {
+            return jars.filter(path -> path.getFileName().toString().matches(pattern + "\\.jar"))
+                    .filter(path -> !path.getFileName().toString().startsWith("original-"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("no " + pattern + " in " + folder + " — build it first"));
+        } catch (IOException failed) {
+            throw new UncheckedIOException(failed);
+        }
+    }
+}

@@ -200,6 +200,7 @@ jobs:
           fetch enchants-standalone RainsEnchants
           fetch performance-standalone RainsPerformanceOptimizer
           fetch afkcam-standalone RainsAfkCam
+          fetch welcome-standalone RainsWelcome
           fetch economy-standalone RainsEconomy
           fetch shops-standalone RainsShops
           fetch roles-standalone RainsRoles
