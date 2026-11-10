@@ -6,6 +6,9 @@ import de.raindancer.e2e.E2e;
 import de.raindancer.e2e.LocalPostgres;
 import de.raindancer.e2e.PaperServer;
 import de.raindancer.e2e.VelocityProxy;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundSetCameraPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.ClientboundAddEntityPacket;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -23,9 +26,10 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Hyades' welcome server behind the proxy (RainsNetworkProxy 1.8.0 newcomers.server, RainsWelcome 0.1.0): a player
- * the network has never seen lands on the welcome server — which runs on a database of its own — and /skip takes
- * them on to the SMP; from then on they go straight there. With the welcome server down, a newcomer still lands on
+ * Hyades' welcome server behind the proxy (RainsNetworkProxy 1.8.0 newcomers.server, RainsWelcome 0.2.0): a player
+ * the network has never seen lands on the welcome server — which runs on a database of its own — watches the intro
+ * (a camera flight in spectator mode through the recorded shots, their game mode given back after), is greeted, and
+ * /skip takes them on to the SMP; from then on they go straight there. Sneaking skips an intro. With the welcome server down, a newcomer still lands on
  * the SMP instead of being turned away.
  */
 @Tag("e2e")
@@ -50,7 +54,13 @@ class WelcomeScenarioTest {
                 .plugin(jar("welcome-standalone", "RainsWelcome-.*"))
                 .file("config/paper-global.yml", paperGlobal)
                 .file("plugins/RainsCore/network.yml", postgres.networkYml("welcome", "welcome")
-                        .replace("database: " + LocalPostgres.DATABASE, "database: " + WELCOME_DB)).build();
+                        .replace("database: " + LocalPostgres.DATABASE, "database: " + WELCOME_DB))
+                .file("plugins/RainsWelcome/intro.yml", """
+                        shots:
+                        - {world: world, x: 160.5, y: 110.0, z: 160.5, yaw: 0.0, pitch: 30.0, caption: 'Welcome to Hyades | test'}
+                        - {world: world, x: 175.5, y: 112.0, z: 168.5, yaw: 90.0, pitch: 20.0, caption: 'Guild halls'}
+                        - {world: world, x: 168.5, y: 115.0, z: 182.5, yaw: 180.0, pitch: 10.0, caption: ''}
+                        """).build();
 
         Map<String, Integer> servers = new LinkedHashMap<>();
         servers.put("smp", smp.port());
@@ -66,14 +76,44 @@ class WelcomeScenarioTest {
             smp.start();
             welcome.start();
             welcome.awaitLog("Welcome is up: newcomers are greeted and sent on to smp", WAIT);
+            welcome.awaitLog("Intro: 3 shot\\(s\\), 0 track\\(s\\) of music", WAIT);
+            welcome.console("settings set welcome:seconds-per-shot 3");
             proxy.start();
             assertThat(proxy.log()).contains("Players new to the network go to welcome first");
 
             // ── Ada, new: the welcome server, which writes nothing into the network's database ──────────────────
-            Bot ada = welcome.bot("Ada").through("localhost", proxy.port()).join();
+            Bot ada = welcome.bot("Ada").record(ClientboundSetCameraPacket.class).record(ClientboundAddEntityPacket.class)
+                    .through("localhost", proxy.port()).join();
             Await.until("Ada is on the welcome server", WAIT, () -> welcome.console("list").contains("Ada"));
             assertThat(proxy.log()).contains("Ada is new to the network: first to welcome");
-            Await.until("Ada was greeted", WAIT, () -> ada.titles().stream().anyMatch(t -> t.contains("Welcome to Hyades")));
+            // The intro waits for her resource pack (a bot never answers: 30 s), then flies in spectator mode.
+            Await.until("Ada watches the intro", Duration.ofSeconds(90),
+                    () -> welcome.console("data get entity Ada playerGameType").contains(": 3"));
+            int camera = Await.value("a camera for Ada to watch through", WAIT, () -> ada.received(
+                    ClientboundSetCameraPacket.class).stream().map(ClientboundSetCameraPacket::getCameraEntityId)
+                    .filter(id -> id != ada.entityId()).findFirst().orElse(null));
+            // The shots are near her spawn: a bot never confirms chunk batches, so after a teleport far away
+            // Paper sends it no more chunks — and no entities in them. A real client does (WelcomeIntroScreenshotsTest).
+            assertThat(ada.received(ClientboundAddEntityPacket.class)).as("she was sent the display she watches through")
+                    .anyMatch(added -> added.getEntityId() == camera && added.getType() == EntityType.ITEM_DISPLAY);
+            Await.until("the first caption", WAIT, () -> ada.titles().stream().anyMatch(t -> t.contains("Welcome to Hyades")));
+            Await.until("the intro is over and her game mode is back", WAIT,
+                    () -> !welcome.console("data get entity Ada playerGameType").contains(": 3"));
+            Await.until("Ada was greeted", WAIT,
+                    () -> ada.titles().stream().filter(t -> t.contains("Welcome to Hyades")).count() >= 2);
+            assertThat(welcome.console("execute if entity @e[type=item_display]")).as("the camera is gone")
+                    .containsIgnoringCase("failed");
+
+            // ── sneaking skips an intro (a staff preview here) ──────────────────────────────────────────────────
+            welcome.console("op Ada");
+            ada.run("intro play");
+            Await.until("Ada watches again", WAIT, () -> welcome.console("data get entity Ada playerGameType").contains(": 3"));
+            Await.ticks(40);
+            ada.keys(false, false, false, false, false, true, false);
+            Await.until("sneaking skipped it", Duration.ofSeconds(10),
+                    () -> !welcome.console("data get entity Ada playerGameType").contains(": 3"));
+            ada.keys(false, false, false, false, false, false, false);
+            welcome.console("deop Ada");
             assertThat(sql(postgres, LocalPostgres.DATABASE,
                     "SELECT count(*) FROM core.network_first_seen WHERE player = '" + ada.id() + "'"))
                     .as("the network has still not seen her").isEqualTo("0");
