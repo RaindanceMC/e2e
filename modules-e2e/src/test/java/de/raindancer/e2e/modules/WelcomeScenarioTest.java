@@ -29,7 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Hyades' welcome server behind the proxy (RainsNetworkProxy 1.8.0 newcomers.server, RainsWelcome 0.2.0): a player
  * the network has never seen lands on the welcome server — which runs on a database of its own — watches the intro
  * (a camera flight in spectator mode through the recorded shots, their game mode given back after), is greeted, and
- * /skip takes them on to the SMP; from then on they go straight there. Sneaking skips an intro. With the welcome server down, a newcomer still lands on
+ * /skip takes them on to the SMP; from then on they go straight there. /trailer and /tutorial on the SMP take them back
+ * over — /tutorial straight to the guide, told so by a cookie that rides along through Velocity. Sneaking skips an intro. With the welcome server down, a newcomer still lands on
  * the SMP instead of being turned away.
  */
 @Tag("e2e")
@@ -143,6 +144,23 @@ class WelcomeScenarioTest {
             // ── /trailer on the SMP: over to the welcome server to watch it ─────────────────────────────────────
             back.run("trailer");
             Await.until("Ada went over for the trailer", WAIT, () -> welcome.console("list").contains("Ada"));
+
+            // ── /tutorial on the SMP: over to the welcome server, straight to the guide, no intro first ─────────
+            welcome.console("op Ada");
+            back.run("tutorial island generate");
+            Await.until("the island is built", WAIT,
+                    () -> String.join("\n", back.chatText()).contains("tutorial island is built"));
+            welcome.console("deop Ada");
+            back.run("skip");
+            Await.until("Ada is back on the SMP", WAIT, () -> smp.console("list").contains("Ada"));
+            int dialogs = back.dialogsShown();
+            back.run("tutorial");
+            Await.until("Ada went over for the tour", WAIT, () -> welcome.console("list").contains("Ada"));
+            // The note rode along as a cookie on her client, through Velocity.
+            var hello = back.awaitDialog(dialogs, WAIT);
+            assertThat(hello.title()).as("her guide greets her at once").contains("Hi, I'm Iris");
+            assertThat(welcome.console("data get entity Ada playerGameType")).as("no intro in between").doesNotContain(": 3");
+            assertThat(welcome.console("execute in tutorial if entity @a[name=Ada]")).containsIgnoringCase("passed");
             back.leave();
             Await.until("Ada left", WAIT, () -> !welcome.console("list").contains("Ada"));
 
