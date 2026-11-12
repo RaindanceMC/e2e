@@ -200,6 +200,7 @@ jobs:
           fetch enchants-standalone RainsEnchants
           fetch performance-standalone RainsPerformanceOptimizer
           fetch afkcam-standalone RainsAfkCam
+          fetch draftworld-standalone RainsDraftWorld
           fetch welcome-standalone RainsWelcome
           fetch economy-standalone RainsEconomy
           fetch shops-standalone RainsShops
@@ -223,6 +224,13 @@ jobs:
           fetch discordlink-standalone RainsDiscordLink
           fetch speedrun-bundle RainsSpeedrunServer
           fetch yeuksmp YeukSMP
+
+      # Not ours: the draft world scenario copies and pastes with it. The same release the servers run.
+      - name: FastAsyncWorldEdit, from its releases
+        run: |
+          mkdir -p jars/fawe/target
+          curl -sfL -o jars/fawe/target/FastAsyncWorldEdit-Paper-2.16.1.jar \
+            https://github.com/IntellectualSites/FastAsyncWorldEdit/releases/download/2.16.1/FastAsyncWorldEdit-Paper-2.16.1.jar
 
       - name: RainsCore, from the registry
         run: |
