@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * RainsElytra on a real server: a smithing table trims an elytra like armour, and /elytra puts a chestplate look on
- * it and takes it off — each read back from the item the server holds.
+ * it and takes it off — each read back from the item the server holds. Looks are Prime's by default: Ada, an operator,
+ * has them through the staff nodes; Bo, a plain player, is told they are a Prime perk.
  */
 @Tag("e2e")
 class ElytraScenarioTest {
@@ -31,7 +32,7 @@ class ElytraScenarioTest {
     void trimsAndLooks() {
         try (Server server = Server.start("elytra", List.of("elytra-standalone:RainsElytra-.*"),
                 List.of("Elytra is up"))) {
-            assertThat(server.log()).contains("Elytra is up: 18 trim recipes take an elytra, 7 chestplate looks");
+            assertThat(server.log()).contains("Elytra is up: 18 trim recipes take an elytra, 7 chestplate looks (Prime only)");
 
             server.console("forceload add -16 -16 16 16");
             server.console("fill -6 " + (Y - 3) + " -6 6 " + (Y - 1) + " 6 minecraft:stone");
@@ -88,6 +89,16 @@ class ElytraScenarioTest {
             Await.until("the menu put the diamond look on", WAIT,
                     () -> held(server).contains("rainselytra:diamond_chestplate"));
             ada.closeWindow();
+
+            // ---- Prime only: a player without Prime (and not staff) may look, but not put one on
+            Bot bo = server.player("Bo");
+            server.console("tp Bo 0.5 " + Y + " 1.5");
+            server.console("give Bo minecraft:elytra");
+            Await.ticks(10);
+            bo.hold(0);
+            bo.runAndExpect("elytra look gold", "Prime perk");
+            assertThat(server.console("data get entity Bo Inventory[{Slot:0b}].components"))
+                    .as("Bo's elytra stays plain").doesNotContain("rainselytra:");
 
             // Core's pack web server on 8123 is the one thing a second local e2e server running beside this one
             // takes away; it says so in one line, and has nothing to do with the elytra.
