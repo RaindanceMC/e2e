@@ -195,6 +195,7 @@ jobs:
           fetch twitch-standalone RainsTwitch
           fetch arenagate-standalone RainsArenaGate
           fetch veintoggle-standalone RainsVeinToggle
+          fetch elytra-standalone RainsElytra
           fetch healthbars-standalone RainsHealthBars
           fetch ctf-standalone RainsCaptureTheFlag
           fetch enchants-standalone RainsEnchants
