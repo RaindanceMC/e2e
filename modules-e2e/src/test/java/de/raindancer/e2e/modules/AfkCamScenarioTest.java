@@ -26,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The AFK camera on a real server, through the game's own packets: the client is told to look through an item
  * display it was sent, with a mannequin for its own body, and back through its own eyes the moment it presses a key —
  * while it stays in survival.
- * Once by /afkcam preview, once by going /afk with the essentials module saying who is away.
+ * Once by /afkcam preview, once by going /afk with the essentials module saying who is away — tips above the hotbar
+ * after the first seconds.
  */
 @Tag("e2e")
 class AfkCamScenarioTest {
@@ -90,6 +91,10 @@ class AfkCamScenarioTest {
             Await.until("a camera after going away", Duration.ofSeconds(20),
                     () -> watcher.received(ClientboundSetCameraPacket.class).size() > before);
             lookingThroughSomethingElse(watcher);
+            // first the way back, then, a few seconds on, a tip after the minutes
+            watcher.expectActionBar("any key brings you back");
+            Await.until(() -> "a tip above the hotbar (" + watcher.actionBars() + ")", Duration.ofSeconds(25),
+                    () -> watcher.actionBars().stream().anyMatch(bar -> bar.startsWith("Away 0 min · 💡 ")));
             pressForward(watcher);
             backInOwnEyes(watcher);
             assertThat(server.paper.errorsFrom("RainsAfkCam")).isEmpty();
