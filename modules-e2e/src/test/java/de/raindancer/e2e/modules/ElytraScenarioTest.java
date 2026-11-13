@@ -100,6 +100,12 @@ class ElytraScenarioTest {
             assertThat(server.console("data get entity Bo Inventory[{Slot:0b}].components"))
                     .as("Bo's elytra stays plain").doesNotContain("rainselytra:");
 
+            // ---- a look Bo was handed by somebody else (or wore while they still had Prime) comes off by itself
+            server.console("give Bo minecraft:elytra[minecraft:equippable={slot:'chest',asset_id:'rainselytra:gold_chestplate'}]");
+            Await.until(() -> "the look on Bo's elytra comes off: " + server.console("data get entity Bo Inventory"), WAIT,
+                    () -> !server.console("data get entity Bo Inventory").contains("rainselytra:"));
+            bo.expectChat("look");
+
             // Core's pack web server on 8123 is the one thing a second local e2e server running beside this one
             // takes away; it says so in one line, and has nothing to do with the elytra.
             assertThat(server.paper.errorsFrom("RainsCore", "RainsElytra"))
