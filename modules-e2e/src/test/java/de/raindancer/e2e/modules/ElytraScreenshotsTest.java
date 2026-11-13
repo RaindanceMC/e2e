@@ -14,7 +14,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Trimmed elytra and the chestplate looks, photographed with the real client wearing the server's pack:
+ * Trimmed elytra, the chestplate looks, trimmed horse armour and the dog armour looks, photographed with the real client wearing the server's pack:
  * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=ElytraScreenshotsTest}. Four armour stands show pattern and
  * material pairs; Rain, a bot, put his look on with /elytra like a player would.
  */
@@ -30,14 +30,29 @@ class ElytraScreenshotsTest {
                 List.of("Elytra is up"))) {
             server.console("settings set core:packs-required true");
             server.console("forceload add -32 -32 32 32");
-            server.console("fill -10 " + (Y - 1) + " -10 10 " + (Y - 1) + " 10 minecraft:smooth_stone");
-            server.console("fill -10 " + Y + " -10 10 " + (Y + 12) + " 10 minecraft:air");
+            server.console("fill -10 " + (Y - 1) + " -10 10 " + (Y - 1) + " 16 minecraft:smooth_stone");
+            server.console("fill -10 " + Y + " -10 10 " + (Y + 12) + " 16 minecraft:air");
             server.console("time set 6000");
             server.console("gamerule advance_time false");
             stand(server, -3, "coast", "gold", null);
             stand(server, -1.5, "wild", "amethyst", "netherite");
             stand(server, 0, "silence", "diamond", "diamond");
             stand(server, 1.5, "flow", "copper", "leather");
+            // a row of trimmed horses and of dogs in their looks, side on, a few blocks behind
+            String[][] horses = {{"iron", "silence", "gold"}, {"diamond", "ward", "amethyst"}, {"golden", "tide", "redstone"},
+                    {"netherite", "rib", "diamond"}};
+            for (int i = 0; i < horses.length; i++) {
+                server.console("summon minecraft:horse " + (i * 3 - 4.5) + " " + Y + " 7 {Tame:1b,NoAI:1b,Variant:" + i
+                        + ",Rotation:[-90f,0f],equipment:{body:{id:\"minecraft:" + horses[i][0] + "_horse_armor\",count:1,"
+                        + "components:{\"minecraft:trim\":{pattern:\"minecraft:" + horses[i][1] + "\",material:\"minecraft:"
+                        + horses[i][2] + "\"}}}}}");
+            }
+            String[] dogs = {"leather", "iron", "gold", "diamond", "netherite", "gilded"};
+            for (int i = 0; i < dogs.length; i++) {
+                server.console("summon minecraft:wolf " + (i * 1.5 - 3.75) + " " + Y + " 4 {NoAI:1b,Rotation:[-90f,0f],"
+                        + "equipment:{body:{id:\"minecraft:wolf_armor\",count:1,components:{\"minecraft:equippable\":"
+                        + "{slot:\"body\",asset_id:\"rainselytra:dog_" + dogs[i] + "\"}}}}}");
+            }
             Await.ticks(60);
             try (RealClient viewer = RealClient.join(server.paper, "Viewer", 4)) {
                 Path shots = E2e.out().resolve("screenshots");
@@ -64,6 +79,11 @@ class ElytraScreenshotsTest {
                 Await.ticks(80);
                 viewer.screenshot(shots.resolve("elytra-2-fronts.png"));
 
+                server.console("gamemode spectator Viewer");
+                server.console("tp Viewer 0 " + (Y + 1.8) + " 13.5 180 14");
+                Await.ticks(80);
+                viewer.screenshot(shots.resolve("elytra-4-horses-and-dogs.png"));
+                server.console("gamemode creative Viewer");
                 server.console("give Viewer minecraft:elytra");
                 Await.ticks(10);
                 server.console("e2e as Viewer elytra");
