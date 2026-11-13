@@ -94,7 +94,7 @@ class AfkCamScenarioTest {
             // first the way back, then, a few seconds on, a tip after the minutes
             watcher.expectActionBar("any key brings you back");
             Await.until(() -> "a tip above the hotbar (" + watcher.actionBars() + ")", Duration.ofSeconds(25),
-                    () -> watcher.actionBars().stream().anyMatch(bar -> bar.startsWith("Away 0 min · 💡 ")));
+                    () -> watcher.actionBars().stream().anyMatch(bar -> bar.startsWith("Away 0 min · ") && !bar.contains("💡")));
             pressForward(watcher);
             backInOwnEyes(watcher);
             assertThat(server.paper.errorsFrom("RainsAfkCam")).isEmpty();
