@@ -243,4 +243,33 @@ class EconomyStatuesScenarioTest {
             assertThat(server.paper.errorsFrom("RainsCore", "RainsEconomy")).isEmpty();
         }
     }
+
+    @Test
+    @DisplayName("Prime statues go up one at a time and stand on the ground like mannequin statues: no pedestal, no label")
+    void primeOneAtATime() {
+        try (Server server = Server.start("economy-statues-prime", List.of("economy-standalone:RainsEconomy-.*"),
+                List.of("The economy is up"))) {
+            Bot ada = server.admin("Ada");
+            server.console("forceload add 280 280 320 320");
+            server.console("fill 290 99 290 310 99 310 minecraft:stone");
+            server.console("tp Ada 300.5 100 300.5 0 0");
+            Await.ticks(20);
+            ada.forgetChat();
+            ada.run("eco statue place prime");
+            Await.until("Ada is told one Prime statue stands", WAIT, () -> said(ada, "Prime statue #1"));
+            Await.until("one statue stands", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 1);
+            Await.ticks(40);
+            assertThat(count(server, "@e[type=minecraft:block_display]")).as("no pedestal").isZero();
+            assertThat(count(server, "@e[type=minecraft:text_display]")).as("no label over it").isZero();
+            assertThat(server.console("data get entity @e[type=minecraft:mannequin,limit=1] Pos[1]"))
+                    .as("its feet on the ground Ada stood on").contains("100.0d");
+
+            server.console("tp Ada 303.5 100 300.5 0 0");
+            Await.ticks(10);
+            ada.run("eco statue place prime");
+            Await.until("a second one, the next place", WAIT, () -> said(ada, "Prime statue #2"));
+            Await.until("two statues now", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 2);
+            assertThat(count(server, "@e[type=minecraft:block_display]")).isZero();
+        }
+    }
 }
