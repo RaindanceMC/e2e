@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * RainsWorldGate on a real server: a scheduled Nether is closed until its time, everybody online is counted down to it
  * (a reminder a minute before, a boss bar, the last seconds as titles with a sound) and it opens by itself with a
- * title — then a player may go in.
+ * title — then a player may go in, and their first visit plays the Nether's music, once.
  */
 @Tag("e2e")
 class WorldGateScenarioTest {
@@ -49,6 +49,19 @@ class WorldGateScenarioTest {
             Await.until("the bar is gone (" + bo.bossBars() + ")", WAIT, () -> bo.bossBars().isEmpty());
             assertThat(server.console("worldgate status")).contains("OPEN");
             assertThat(server.log()).contains("The Nether opened as scheduled.");
+
+            // ---- the first visit after the opening plays the Nether's music, once
+            bo.forgetEffects();
+            server.console("execute in minecraft:the_nether run tp Bo 0 100 0");
+            Await.until("Bo hears the Nether's music on arrival (" + bo.soundsHeard() + ")", WAIT,
+                    () -> bo.soundsHeard().stream().anyMatch(sound -> sound.contains("music.nether")));
+            bo.expectActionBar("Ancient Power Of Serpents");
+            server.console("execute in minecraft:overworld run tp Bo 0 100 0");
+            Await.ticks(20);
+            bo.forgetEffects();
+            server.console("execute in minecraft:the_nether run tp Bo 0 100 0");
+            Await.ticks(40);
+            assertThat(bo.soundsHeard()).as("a second visit is quiet").noneMatch(sound -> sound.contains("music.nether"));
 
             assertThat(server.paper.errorsFrom("RainsCore", "RainsWorldGate"))
                     .filteredOn(line -> !line.contains("resource pack server could not start"))
