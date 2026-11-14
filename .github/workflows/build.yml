@@ -175,6 +175,7 @@ jobs:
           }
 
           fetch claims-standalone RainsExtendedClaims
+          fetch animals-standalone RainsAnimals
           fetch moderation-standalone RainsModeration
           fetch names-standalone RainsColouredNames
           fetch cosmetics-standalone RainsCosmetics

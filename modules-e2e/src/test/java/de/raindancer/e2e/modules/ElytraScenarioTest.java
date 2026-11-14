@@ -32,7 +32,7 @@ class ElytraScenarioTest {
     void trimsAndLooks() {
         try (Server server = Server.start("elytra", List.of("elytra-standalone:RainsElytra-.*"),
                 List.of("Elytra is up"))) {
-            assertThat(server.log()).contains("Elytra is up: 36 trim recipes take an elytra or horse armour, 7 chestplate looks and 7 dog armour looks (Prime only)");
+            assertThat(server.log()).contains("Elytra is up: 18 trim recipes take an elytra, 7 chestplate looks (Prime only)");
 
             server.console("forceload add -16 -16 16 16");
             server.console("fill -6 " + (Y - 3) + " -6 6 " + (Y - 1) + " 6 minecraft:stone");
@@ -68,33 +68,6 @@ class ElytraScenarioTest {
             ada.closeWindow();
             Await.until("Ada has the elytra with a coast trim in diamond", WAIT, () -> server.console(
                     "execute if items entity Ada container.* " + TRIMMED).contains("passed"));
-
-            // ---- horse armour takes a trim the same way
-            server.console("clear Ada");
-            server.console("give Ada minecraft:sentry_armor_trim_smithing_template");
-            server.console("give Ada minecraft:iron_horse_armor");
-            server.console("give Ada minecraft:gold_ingot");
-            Await.ticks(20);
-            ada.useOn(2, Y, 0);
-            ada.awaitWindow("container.upgrade");
-            Await.ticks(10);
-            for (String item : List.of("sentry_armor_trim_smithing_template", "iron_horse_armor", "gold_ingot")) {
-                int slot = Await.value("Ada's " + item + " below the smithing table", WAIT, () -> ada.window()
-                        .flatMap(window -> window.items().entrySet().stream()
-                                .filter(entry -> entry.getKey() > RESULT && entry.getValue().is(item))
-                                .map(Map.Entry::getKey).findFirst())
-                        .orElse(null));
-                ada.shiftClickSlot(slot);
-                Await.ticks(5);
-            }
-            Await.until("the table offers trimmed horse armour", WAIT, () -> ada.window()
-                    .map(window -> window.items().get(RESULT)).map(result -> result.is("iron_horse_armor")).orElse(false));
-            ada.shiftClickSlot(RESULT);
-            Await.ticks(10);
-            ada.closeWindow();
-            Await.until("Ada has iron horse armour with a sentry trim in gold", WAIT, () -> server.console(
-                    "execute if items entity Ada container.* minecraft:iron_horse_armor[minecraft:trim="
-                            + "{pattern:'minecraft:sentry',material:'minecraft:gold'}]").contains("passed"));
 
             // ---- a look: on by command, off again, on through the menu — the trim stays through all of it
             // The only thing left after smithing; into the first hotbar slot, which the bot holds.
@@ -136,27 +109,6 @@ class ElytraScenarioTest {
             assertThat(server.console("execute if items entity Bo container.* minecraft:elytra[minecraft:trim="
                     + "{pattern:'minecraft:coast',material:'minecraft:diamond'}]"))
                     .as("the trim is everybody's and stays on").contains("passed");
-
-            // ---- dog armour looks: Ada puts one on the armour in her hand; Bo's dog, Bo without Prime, loses its own
-            server.console("clear Ada");
-            server.console("give Ada minecraft:wolf_armor");
-            ada.hold(0);
-            Await.ticks(10);
-            ada.runAndExpect("elytra dog gilded", "Gilded netherite");
-            Await.until(() -> "the dog armour points at the gilded look: " + held(server), WAIT,
-                    () -> held(server).contains("rainselytra:dog_gilded"));
-            java.util.UUID boId = bo.id();
-            long most = boId.getMostSignificantBits();
-            long least = boId.getLeastSignificantBits();
-            String owner = "[I;" + (int) (most >> 32) + "," + (int) most + "," + (int) (least >> 32) + "," + (int) least + "]";
-            server.console("summon minecraft:wolf 3.5 " + Y + " 3.5 {Owner:" + owner + ",Tags:[\"bos_dog\"],equipment:{body:"
-                    + "{id:\"minecraft:wolf_armor\",count:1,components:{\"minecraft:equippable\":"
-                    + "{slot:\"body\",asset_id:\"rainselytra:dog_netherite\"}}}}}");
-            Await.until(() -> "Bo's dog loses its look: " + server.console("data get entity @e[tag=bos_dog,limit=1] equipment"),
-                    WAIT, () -> {
-                        String body = server.console("data get entity @e[tag=bos_dog,limit=1] equipment");
-                        return body.contains("wolf_armor") && !body.contains("rainselytra:");
-                    });
 
             // Core's pack web server on 8123 is the one thing a second local e2e server running beside this one
             // takes away; it says so in one line, and has nothing to do with the elytra.
