@@ -18,22 +18,22 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Approved map art arrives as one bundle holding every map of the picture. */
+/** Approved map art arrives as one pink bundle holding every map of the picture, with a thank-you on it. */
 @Tag("e2e")
 class PrimeMapArtScenarioTest {
 
     private static final Duration WAIT = Duration.ofSeconds(30);
-    private static final Pattern ASKED = Pattern.compile("Map art (\\w+) \\(2×2 maps\\)");
+    private static final Pattern ASKED = Pattern.compile("Map art (\\w+) \\(6×4 maps\\)");
 
     @Test
-    @DisplayName("a 2×2 map art is handed over as a bundle with its four maps")
+    @DisplayName("a 6×4 map art is handed over as a pink bundle with its 24 maps and a thank-you")
     void deliveredInABundle() throws IOException {
         String scenario = "prime-mapart";
         try (Server server = Server.start(scenario, List.of("prime-standalone:RainsPrime-.*"), List.of("Done \\("))) {
             Bot ada = server.admin("Ada");
             server.console("clear Ada");
             // The link is never fetched: the picture is put where the request keeps it, as if fetched at asking time.
-            ada.run("prime mapart https://example.invalid/castle.png 2x2");
+            ada.run("prime mapart https://example.invalid/castle.png 6x4");
             String id = Await.value("Ada is told her request waits", WAIT, () -> ada.chatText().stream()
                     .map(ASKED::matcher).filter(Matcher::find).map(found -> found.group(1)).findFirst().orElse(null));
 
@@ -41,17 +41,19 @@ class PrimeMapArtScenarioTest {
             Path data = server.folder().resolve("plugins").resolve("RainsPrime");
             Path kept = data.resolve("mapart").resolve(id).resolve("asked.png");
             Files.createDirectories(kept.getParent());
-            ImageIO.write(new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB), "png", kept.toFile());
+            ImageIO.write(new BufferedImage(6 * 128, 4 * 128, BufferedImage.TYPE_INT_RGB), "png", kept.toFile());
 
             String approved = server.console("prime mapart approve " + id);
             Await.until(() -> "the maps reach Ada after: " + approved + " / " + server.console("data get entity Ada Inventory"),
-                    WAIT, () -> server.console("data get entity Ada Inventory").contains("minecraft:bundle"));
+                    WAIT, () -> server.console("data get entity Ada Inventory").contains("bundle"));
 
             // the console cuts long NBT short, so count with execute if data, which answers "Count: N"
             assertThat(count(server, "Inventory[]")).as("one item in Ada's inventory, no map lies loose").isEqualTo(1);
-            assertThat(count(server, "Inventory[{Slot:0b,id:\"minecraft:bundle\"}]")).as("and it is a bundle").isEqualTo(1);
+            assertThat(count(server, "Inventory[{Slot:0b,id:\"minecraft:pink_bundle\"}]")).as("and it is a pink bundle").isEqualTo(1);
             assertThat(count(server, "Inventory[0].components.\"minecraft:bundle_contents\"[{id:\"minecraft:filled_map\"}]"))
-                    .as("holding the four maps").isEqualTo(4);
+                    .as("holding all 24 maps").isEqualTo(24);
+            assertThat(server.console("data get entity Ada Inventory[0].components.\"minecraft:lore\""))
+                    .as("with a thank-you on it").contains("Thank you for supporting us with Prime");
         }
     }
 
