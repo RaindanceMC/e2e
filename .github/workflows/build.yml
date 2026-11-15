@@ -213,6 +213,7 @@ jobs:
           fetch playerutils-standalone RainsPlayerUtils
           fetch voicebridge-standalone RainsVoiceBridge
           fetch xaeromap-standalone RainsXaeroMap
+          fetch prime-standalone RainsPrime
           fetch wallsroads-standalone RainsWallsAndRoads
           fetch chained-standalone RainsChained
           fetch arena-standalone RainsArena

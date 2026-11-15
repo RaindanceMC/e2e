@@ -92,6 +92,11 @@ final class Server implements AutoCloseable {
         return paper.bot(name).join();
     }
 
+    /** Where this server runs: its plugins, worlds and configuration. */
+    Path folder() {
+        return paper.folder();
+    }
+
     /** Everything the server logged so far. */
     String log() {
         return paper.log();
