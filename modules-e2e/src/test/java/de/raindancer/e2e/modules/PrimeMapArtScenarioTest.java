@@ -57,6 +57,31 @@ class PrimeMapArtScenarioTest {
         }
     }
 
+    @Test
+    @DisplayName("large picks 10×6 for a 720p picture and medium 4×6 for a poster; the picture is fetched once and drawn")
+    void presetsPickTheSize() {
+        // Needs the internet: placehold.co answers with a PNG of exactly the size in its link.
+        String scenario = "prime-mapart-presets";
+        try (Server server = Server.start(scenario, List.of("prime-standalone:RainsPrime-.*"), List.of("Done \\("))) {
+            Bot ada = server.admin("Ada");
+            server.console("clear Ada");
+            assertThat(server.console("settings set prime:mapart.per-month 2")).contains("is now");
+            ada.run("prime mapart https://placehold.co/1280x720.png large");
+            String wide = Await.value("large picks 10×6 for 720p", Duration.ofSeconds(45), () -> ada.chatText().stream()
+                    .map(Pattern.compile("Map art (\\w+) \\(10×6 maps\\)")::matcher).filter(Matcher::find)
+                    .map(found -> found.group(1)).findFirst().orElse(null));
+            ada.run("prime mapart https://placehold.co/600x900.png medium");
+            Await.until("medium picks 4×6 for a poster", Duration.ofSeconds(45),
+                    () -> ada.chatText().stream().anyMatch(line -> line.contains("(4×6 maps)")));
+
+            server.console("prime mapart approve " + wide);
+            Await.until("the 720p map art reaches Ada", WAIT,
+                    () -> count(server, "Inventory[{id:\"minecraft:pink_bundle\"}]") == 1);
+            assertThat(count(server, "Inventory[0].components.\"minecraft:bundle_contents\"[{id:\"minecraft:filled_map\"}]"))
+                    .as("all 60 maps in the one bundle").isEqualTo(60);
+        }
+    }
+
     private static int count(Server server, String path) {
         Matcher found = Pattern.compile("(?i)count: (\\d+)").matcher(server.console("execute if data entity Ada " + path));
         return found.find() ? Integer.parseInt(found.group(1)) : 0;
