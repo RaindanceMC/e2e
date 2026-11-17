@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Statues of the top three: a whole podium of three on pedestals under a label, or each statue placed, moved and
  * removed on its own; each wearing the skin of whoever holds its place, the next one up when somebody overtakes
- * them. A podium placed before 0.61.0 comes back as three statues, its old pieces cleared away.
+ * them. A podium placed before 0.61.0 comes back as three statues, its old pieces cleared away. The statues are
+ * RainsCore's since 2.106.0 (Economy 0.78.0 offers the boards); Prime's come from the Prime plugin.
  */
 @Tag("e2e")
 class EconomyStatuesScenarioTest {
@@ -33,7 +34,7 @@ class EconomyStatuesScenarioTest {
 
     /** Statues wearing this holder: a player's id, or "-" for a place nobody holds. */
     private static String wearing(String holder) {
-        return "@e[type=minecraft:mannequin,nbt={BukkitValues:{\"rainseconomy:statue_holder\":\"" + holder + "\"}}]";
+        return "@e[type=minecraft:mannequin,nbt={BukkitValues:{\"rainscore:statue_holder\":\"" + holder + "\"}}]";
     }
 
     private static String one(String holder) {
@@ -247,8 +248,8 @@ class EconomyStatuesScenarioTest {
     @Test
     @DisplayName("Prime statues go up one at a time and stand on the ground like mannequin statues: no pedestal, no label")
     void primeOneAtATime() {
-        try (Server server = Server.start("economy-statues-prime", List.of("economy-standalone:RainsEconomy-.*"),
-                List.of("The economy is up"))) {
+        try (Server server = Server.start("economy-statues-prime", List.of("economy-standalone:RainsEconomy-.*",
+                "prime-standalone:RainsPrime-.*"), List.of("The economy is up"))) {
             Bot ada = server.admin("Ada");
             server.console("forceload add 280 280 320 320");
             server.console("fill 290 99 290 310 99 310 minecraft:stone");
@@ -256,7 +257,7 @@ class EconomyStatuesScenarioTest {
             Await.ticks(20);
             ada.forgetChat();
             ada.run("eco statue place prime");
-            Await.until("Ada is told one Prime statue stands", WAIT, () -> said(ada, "Prime statue #1"));
+            Await.until("Ada is told one Prime statue stands", WAIT, () -> said(ada, "Statue #1 of the Prime supporters"));
             Await.until("one statue stands", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 1);
             Await.ticks(40);
             assertThat(count(server, "@e[type=minecraft:block_display]")).as("no pedestal").isZero();
@@ -267,7 +268,7 @@ class EconomyStatuesScenarioTest {
             server.console("tp Ada 303.5 100 300.5 0 0");
             Await.ticks(10);
             ada.run("eco statue place prime");
-            Await.until("a second one, the next place", WAIT, () -> said(ada, "Prime statue #2"));
+            Await.until("a second one, the next place", WAIT, () -> said(ada, "Statue #2 of the Prime supporters"));
             Await.until("two statues now", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 2);
             assertThat(count(server, "@e[type=minecraft:block_display]")).isZero();
         }
