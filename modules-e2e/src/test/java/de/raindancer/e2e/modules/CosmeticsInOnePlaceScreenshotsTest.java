@@ -39,10 +39,18 @@ class CosmeticsInOnePlaceScreenshotsTest {
 
             ShownDialog cosmetics = open(ada);
             assertThat(cosmetics.title()).contains("Cosmetics");
-            for (String door : List.of("Name style", "Particles", "Chat colour", "Capture the Flag looks",
-                    "Elytra looks", "Rod skins", "Pet looks", "Clear my cosmetics")) {
+            for (String door : List.of("Name style", "Particles", "Chat colour", "Elytra looks", "Rod skins",
+                    "Pet looks", "Clear my cosmetics")) {
                 assertThat(cosmetics.button(door)).as(door + " is in the cosmetics window").isPresent();
             }
+            assertThat(cosmetics.button("Capture the Flag")).as("not on a server that only also has it").isEmpty();
+            assertThat(cosmetics.button("Unlocks")).as("nothing is for sale here").isEmpty();
+            assertThat(server.console("settings set lobby-on-join true")).contains("is now");
+            Await.ticks(10);
+            assertThat(open(ada).button("Capture the Flag looks")).as("on a server of its own").isPresent();
+            assertThat(server.console("settings set lobby-on-join false")).contains("is now");
+            Await.ticks(10);
+            assertThat(open(ada).button("Capture the Flag")).as("gone again with the switch").isEmpty();
             assertThat(tooltip(cosmetics, "Chat colour")).contains("Yours: plain");
             assertThat(tooltip(cosmetics, "Clear my cosmetics")).as("nothing worn, nothing to clear")
                     .contains("not wearing anything");
