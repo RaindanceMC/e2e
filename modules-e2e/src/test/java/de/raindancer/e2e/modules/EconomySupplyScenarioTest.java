@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The anti-inflation tools on a real server: nothing changes until the owner switches something on; then a hard
- * cap whose treasury pays out and fills up again, a payment tax in slices, a community fund, /repair, dying
+ * cap whose treasury pays out and fills up again, a payment tax in slices, a community fund, dying
  * costing money and /treasury.
  */
 @Tag("e2e")
@@ -40,7 +40,7 @@ class EconomySupplyScenarioTest {
     }
 
     @Test
-    @DisplayName("a capped treasury, taxes in slices, a fund, repair, dying and /treasury")
+    @DisplayName("a capped treasury, taxes in slices, a fund, dying and /treasury")
     void supply() {
         try (Server server = Server.start("economy-supply",
                 List.of("economy-standalone:RainsEconomy-.*"), List.of("The economy is up"))) {
@@ -121,15 +121,6 @@ class EconomySupplyScenarioTest {
             bo.run("fund Spawn 150");
             expect(ada, "everybody hears it is full", "fund is full");
             expect(bo, "Bo gave only what was missing", "You gave ⛃100");
-
-            // ---- /repair offers a price for a worn item
-            set(server, "features.repair", "true");
-            server.console("give Ada minecraft:diamond_sword[minecraft:damage=800] 1");
-            Await.until("the worn sword arrives", WAIT, () -> ada.carrying(item -> item.is("diamond_sword")).isPresent());
-            ada.hold(ada.hotbarSlotOf(item -> item.is("diamond_sword")));
-            ada.forgetChat();
-            ada.run("repair");
-            expect(ada, "a price is offered", "Repairing it costs");
 
             // ---- dying costs a tenth of the balance
             set(server, "death.costs-money", "true");

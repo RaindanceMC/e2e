@@ -112,8 +112,8 @@ class ArenaFightsScenarioTest {
             assertThat(balance(bo)).isEqualTo(1000);
 
             // ── a duel for a stake, queued from survival ────────────────────────────────────────────
-            ada.run("pvp queue duel gladiator 100");
-            bo.run("pvp queue duel gladiator 100");
+            ada.run("duel queue duel gladiator 100");
+            bo.run("duel queue duel gladiator 100");
             Await.until("both are in the arena (Ada was sent " + ada.chatText() + ")", WAIT,
                     () -> arena.console("list").contains("Ada") && arena.console("list").contains("Bo"));
             Await.until("the fight began for both", WAIT, () -> said(ada, "Round 1") && said(bo, "Round 1"));
@@ -156,9 +156,9 @@ class ArenaFightsScenarioTest {
                     && arena.console("execute in minecraft:arena if entity @e[type=skeleton]").contains("failed"));
 
             // ── an invite from survival to somebody in the arena ────────────────────────────────────
-            ada.run("pvp invite Bo duel knight");
+            ada.run("duel invite Bo duel knight");
             Await.until("Bo, in the arena, is asked", WAIT, () -> said(bo, "asks you to a"));
-            bo.run("pvp accept");
+            bo.run("duel accept");
             Await.until("Ada was brought over", WAIT, () -> arena.console("list").contains("Ada"));
             Await.until("the fight began", WAIT, () -> bo.chatText().stream()
                     .filter(line -> line.contains("Round 1")).count() >= 2);
