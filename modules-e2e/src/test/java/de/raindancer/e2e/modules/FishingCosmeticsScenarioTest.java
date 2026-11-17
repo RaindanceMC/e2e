@@ -25,10 +25,12 @@ class FishingCosmeticsScenarioTest {
             Await.ticks(20);
             ada.hold(ada.hotbarSlotOf(item -> item.is("fishing_rod")));
 
-            Bot.Window cosmetics = ada.runAndOpen("cosmetics", "Cosmetics").window().orElseThrow();
-            assertThat(cosmetics.slotNamed("Rod skins")).as("the door on the cosmetics page").isPresent();
-            assertThat(cosmetics.slotNamed("Weapon skins")).isPresent();
-            ada.click("Rod skins");
+            int before = ada.dialogsShown();
+            ada.run("cosmetics");
+            de.raindancer.e2e.ShownDialog cosmetics = ada.awaitDialog(before, Duration.ofSeconds(10));
+            assertThat(cosmetics.button("Rod skins")).as("the door on the cosmetics page").isPresent();
+            assertThat(cosmetics.button("Weapon skins")).isPresent();
+            ada.pressDialogButton("Rod skins", java.util.Map.of());
             Await.until("the rod skins open", Duration.ofSeconds(10), () -> ada.window()
                     .map(window -> window.title().contains("Rod skins")).orElse(false));
             ada.closeWindow();

@@ -58,8 +58,10 @@ class CosmeticsScenarioTest {
             bo.runAndExpect("cosmetics name reset Ada", "You may not do that");
 
             // Particles: the hub's door, the words, the refusals, a colour, and surviving a rejoin.
-            bo.runAndOpen("cosmetics", "Cosmetics");
-            bo.click("Particles");
+            int windows = bo.dialogsShown();
+            bo.run("cosmetics");
+            assertThat(bo.awaitDialog(windows, Duration.ofSeconds(10)).title()).contains("Cosmetics");
+            bo.pressDialogButton("Particles", java.util.Map.of());
             bo.awaitWindow("Your particles");
             bo.closeWindow();
             bo.runAndExpect("cosmetics particle flame", "You are wearing");

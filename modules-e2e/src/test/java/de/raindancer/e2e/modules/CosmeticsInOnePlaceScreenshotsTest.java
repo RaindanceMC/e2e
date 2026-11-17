@@ -4,6 +4,7 @@ import de.raindancer.e2e.Await;
 import de.raindancer.e2e.Bot;
 import de.raindancer.e2e.E2e;
 import de.raindancer.e2e.RealClient;
+import de.raindancer.e2e.ShownDialog;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -11,67 +12,68 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Everything worn is put on in /cosmetics: chat colour, Capture the Flag looks, elytra looks, rod skins and pet looks
- * are doors there, their own commands go back to it, and "clear" takes the chat colour off too. A bot checks it, the
- * real client takes the pictures — {@code mvn -o -Pscreenshots test -pl modules-e2e
- * -Dtest=CosmeticsInOnePlaceScreenshotsTest}. Needs the six standalone jars under jars/.
+ * Everything worn is put on in /cosmetics, the game's own window: chat colour, Capture the Flag looks, elytra looks,
+ * rod skins and pet looks are buttons there, the pickers' Back and the plugins' own commands lead back to it, and
+ * "clear" takes the chat colour off too. A bot checks it, the real client takes the pictures — {@code mvn -o
+ * -Pscreenshots test -pl modules-e2e -Dtest=CosmeticsInOnePlaceScreenshotsTest}. Needs the six standalone jars.
  */
 @Tag("screenshots")
 class CosmeticsInOnePlaceScreenshotsTest {
 
+    private static final Duration WAIT = Duration.ofSeconds(10);
     private static final List<String> PLUGINS = List.of("cosmetics-standalone:RainsCosmetics-.*",
             "chat-standalone:RainsChat-.*", "elytra-standalone:RainsElytra-.*", "fishing-standalone:RainsFishing-.*",
             "pets-standalone:RainsPets-.*", "ctf-standalone:RainsCaptureTheFlag-.*");
 
     @Test
-    @DisplayName("every plugin's cosmetic is a door on the cosmetics page, Back leads there, clear takes all off")
+    @DisplayName("every plugin's cosmetic is a button in the cosmetics window, Back leads there, clear takes all off")
     void inOnePlace() throws Exception {
         try (Server server = Server.start("cosmetics-in-one-place", PLUGINS, List.of("Cosmetics is up"))) {
             Bot ada = server.admin("Ada");
             Await.ticks(20);
 
-            Bot.Window page = ada.runAndOpen("cosmetics", "Cosmetics").window().orElseThrow();
-            for (String door : List.of("Chat colour", "Capture the Flag looks", "Elytra looks", "Rod skins", "Pet looks")) {
-                assertThat(page.slotNamed(door)).as(door + " is a door on the cosmetics page").isPresent();
+            ShownDialog cosmetics = open(ada);
+            assertThat(cosmetics.title()).contains("Cosmetics");
+            for (String door : List.of("Name style", "Particles", "Chat colour", "Capture the Flag looks",
+                    "Elytra looks", "Rod skins", "Pet looks", "Clear my cosmetics")) {
+                assertThat(cosmetics.button(door)).as(door + " is in the cosmetics window").isPresent();
             }
-            assertThat(lore(page, "Chat colour")).anyMatch(line -> line.contains("Yours: plain"));
-            assertThat(lore(page, "Clear my cosmetics")).as("nothing worn, nothing to clear")
-                    .anyMatch(line -> line.contains("not wearing anything"));
+            assertThat(tooltip(cosmetics, "Chat colour")).contains("Yours: plain");
+            assertThat(tooltip(cosmetics, "Clear my cosmetics")).as("nothing worn, nothing to clear")
+                    .contains("not wearing anything");
 
-            ada.click("Chat colour");
+            ada.pressDialogButton("Chat colour", Map.of());
             Bot.Window colours = ada.awaitWindow("chat colour");
-            assertThat(colours.slotNamed("Back")).as("Back from the door").isPresent();
+            assertThat(lore(colours, "Back")).as("the picker goes back to the window")
+                    .anyMatch(line -> line.contains("Cosmetics"));
             int gold = colours.slotNamed("Gold").orElseThrow();
             ada.click("Gold");
             Await.ticks(10);
-            ada.closeWindow();
+            int before = ada.dialogsShown();
+            ada.click("Back");
+            ShownDialog again = ada.awaitDialog(before, WAIT);
+            assertThat(tooltip(again, "Chat colour")).as("the button says what is worn").doesNotContain("Yours: plain");
+            assertThat(tooltip(again, "Clear my cosmetics")).as("a chat colour alone is something to clear")
+                    .doesNotContain("not wearing anything");
 
             Bot.Window typed = ada.runAndOpen("chatstyle", "chat colour").window().orElseThrow();
-            assertThat(lore(typed, "Back")).as("/chatstyle goes back to the cosmetics page")
+            assertThat(lore(typed, "Back")).as("/chatstyle goes back to the cosmetics window")
                     .anyMatch(line -> line.contains("Cosmetics"));
-            ada.click("Back");
-            Bot.Window again = ada.awaitWindow("Cosmetics");
-            assertThat(lore(again, "Chat colour")).as("the door says what is worn")
-                    .noneMatch(line -> line.contains("Yours: plain"));
-            assertThat(lore(again, "Clear my cosmetics")).as("a chat colour alone is something to clear")
-                    .noneMatch(line -> line.contains("not wearing anything"));
             ada.closeWindow();
-
             Bot.Window elytra = ada.runAndOpen("elytra", "").window().orElseThrow();
-            assertThat(lore(elytra, "Back")).as("/elytra goes back to the cosmetics page")
+            assertThat(lore(elytra, "Back")).as("/elytra goes back to the cosmetics window")
                     .anyMatch(line -> line.contains("Cosmetics"));
             ada.closeWindow();
 
             server.console("e2e as Ada cosmetics clear");
             Await.ticks(20);
-            Bot.Window cleared = ada.runAndOpen("cosmetics", "Cosmetics").window().orElseThrow();
-            assertThat(lore(cleared, "Chat colour")).as("clear took the chat colour off too")
-                    .anyMatch(line -> line.contains("Yours: plain"));
-            ada.closeWindow();
+            assertThat(tooltip(open(ada), "Chat colour")).as("clear took the chat colour off too")
+                    .contains("Yours: plain");
 
             try (RealClient viewer = RealClient.join(server.paper, "Viewer")) {
                 Path shots = E2e.out().resolve("screenshots");
@@ -82,32 +84,33 @@ class CosmeticsInOnePlaceScreenshotsTest {
                 Await.ticks(10);
                 server.console("e2e as Viewer chatstyle");
                 Await.ticks(30);
-                viewer.screenshot(shots.resolve("cosmetics-2-chatstyle-command.png"));
-                server.console("e2e as Viewer cosmetics");
-                Await.ticks(30);
-                viewer.screenshot(shots.resolve("cosmetics-1-page.png"));
-                for (String door : List.of("Capture the Flag looks", "Pet looks", "Elytra looks", "Chat colour")) {
-                    server.console("e2e as Viewer cosmetics");
-                    Await.ticks(20);
-                    int slot = page.slotNamed(door).orElseThrow();
-                    server.console("e2e click Viewer " + slot);
-                    Await.ticks(30);
-                    viewer.screenshot(shots.resolve("cosmetics-3-" + door.toLowerCase().replace(' ', '-') + ".png"));
-                }
                 server.console("e2e click Viewer " + gold);
                 Await.ticks(20);
+                viewer.screenshot(shots.resolve("cosmetics-2-chat-colour.png"));
                 server.console("e2e as Viewer cosmetics");
-                Await.ticks(20);
-                viewer.screenshot(shots.resolve("cosmetics-4-wearing-gold.png"));
-                server.console("e2e as Viewer cosmetics clear");
-                Await.ticks(20);
-                server.console("e2e as Viewer cosmetics");
-                Await.ticks(20);
-                viewer.screenshot(shots.resolve("cosmetics-5-after-clear.png"));
+                Await.ticks(40);
+                viewer.screenshot(shots.resolve("cosmetics-1-window.png"));
+                server.console("e2e as Viewer elytra");
+                Await.ticks(30);
+                viewer.screenshot(shots.resolve("cosmetics-3-elytra-looks.png"));
+                server.console("e2e as Viewer cosmetics particle");
+                Await.ticks(30);
+                viewer.screenshot(shots.resolve("cosmetics-4-particles.png"));
             }
             assertThat(server.paper.errorsFrom("RainsCore", "RainsCosmetics", "RainsChat", "RainsElytra",
                     "RainsFishing", "RainsPets", "RainsCaptureTheFlag")).isEmpty();
         }
+    }
+
+    private static ShownDialog open(Bot bot) {
+        int before = bot.dialogsShown();
+        bot.run("cosmetics");
+        return bot.awaitDialog(before, WAIT);
+    }
+
+    private static String tooltip(ShownDialog dialog, String button) {
+        return dialog.button(button).orElseThrow(() -> new AssertionError("no " + button + " in "
+                + dialog.buttons().stream().map(ShownDialog.Button::label).toList())).tooltip();
     }
 
     private static List<String> lore(Bot.Window window, String named) {
