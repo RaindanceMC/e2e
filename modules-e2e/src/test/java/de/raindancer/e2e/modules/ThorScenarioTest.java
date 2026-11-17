@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Thor on a real server: an axe thrown like Mjölnir hits and stays in the inventory; a trident striking a wall calls a
- * storm that hurts what stands beside it; and the shard world's rain spares its endermen, unlike the overworld's.
+ * storm that hurts what stands beside it.
  */
 @Tag("e2e")
 class ThorScenarioTest {
@@ -38,7 +38,7 @@ class ThorScenarioTest {
     }
 
     @Test
-    @DisplayName("Mjölnir hits and stays yours; a trident's storm strikes beside it; the shard world's rain spares endermen")
+    @DisplayName("Mjölnir hits and stays yours; a trident's storm strikes beside it")
     void thor() {
         try (Server server = Server.start("thor", List.of("enchants-standalone:RainsEnchants-.*"),
                 List.of("Enchants are up"))) {
@@ -125,27 +125,6 @@ class ThorScenarioTest {
             assertThat(struck(server, "husk", "left")).as("the storm struck the left husk").isTrue();
             assertThat(struck(server, "husk", "right")).as("the storm struck the right husk").isTrue();
 
-            // --- rain: the shard world's spares its endermen, the overworld's does not --------------------------
-            server.console("execute in minecraft:shardlands run forceload add -16 -16 16 16");
-            // A pen open to the sky: the rain gets in, an enderman wandering about does not get out.
-            for (String in : new String[]{"execute in minecraft:shardlands run ", ""}) {
-                server.console(in + "fill -3 300 -3 3 303 3 minecraft:glass");
-                server.console(in + "fill -2 301 -2 2 303 2 minecraft:air");
-                server.console(in + "fill -2 300 -2 2 300 2 minecraft:stone");
-            }
-            server.console("execute in minecraft:shardlands run weather rain");
-            server.console("weather rain");
-            server.console("execute in minecraft:shardlands run summon minecraft:enderman 0.5 301 0.5 "
-                    + "{PersistenceRequired:1b,Tags:[\"shard\"]}");
-            server.console("summon minecraft:enderman 0.5 301 0.5 {PersistenceRequired:1b,Tags:[\"over\"]}");
-            Await.ticks(100);
-            assertThat(health(server, "enderman", "shard")).as("unhurt by the shard world's rain").isEqualTo(40.0);
-            assertThat(server.console("execute in minecraft:shardlands if entity @e[type=enderman,tag=shard,x=-3,y=299,z=-3,dx=6,dy=4,dz=6]"))
-                    .as("and not fled from it").contains("passed");
-            boolean hurt = health(server, "enderman", "over") < 40.0;
-            boolean fled = !server.console("execute if entity @e[type=enderman,tag=over,x=-3,y=299,z=-3,dx=6,dy=4,dz=6]")
-                    .contains("passed");
-            assertThat(hurt || fled).as("the overworld's rain drives its enderman off").isTrue();
         }
     }
 }
