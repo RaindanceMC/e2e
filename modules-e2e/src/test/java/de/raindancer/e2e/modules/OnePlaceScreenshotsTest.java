@@ -64,11 +64,10 @@ class OnePlaceScreenshotsTest {
             bo.click("Back");
             assertThat(bo.awaitDialog(shown, WAIT).title()).contains("Travel");
 
-            Bot.Window hub = bo.runAndOpen("hub", "").window().orElseThrow();
-            assertThat(hub.slotNamed("Your preferences")).isPresent();
-            assertThat(hub.slotNamed("Travel")).isPresent();
-            assertThat(hub.slotNamed("Server settings")).as("staff only").isEmpty();
-            bo.closeWindow();
+            ShownDialog hub = open(bo, "hub");
+            assertThat(hub.button("Your preferences")).isPresent();
+            assertThat(hub.button("Travel")).isPresent();
+            assertThat(hub.button("Server settings")).as("staff only").isEmpty();
 
             try (RealClient viewer = RealClient.join(server.paper, "Viewer")) {
                 Path shots = E2e.out().resolve("screenshots");

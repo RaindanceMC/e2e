@@ -21,20 +21,12 @@ class HubScenarioTest {
             "warp-standalone:.*", "tpa-standalone:.*", "jobs-standalone:.*",
             "rtp-standalone:.*", "roles-standalone:.*", "cosmetics-standalone:.*");
 
-    private static int slotNamed(Bot bot, String text) {
-        return Await.value("a button named " + text, Duration.ofSeconds(15), () -> bot.window().flatMap(window ->
-                window.top().entrySet().stream().filter(entry -> entry.getValue().name().contains(text))
-                        .map(Map.Entry::getKey).findFirst()).orElse(null));
-    }
+    private static final Duration WAIT = Duration.ofSeconds(15);
 
-    private static List<String> names(Bot bot) {
-        return bot.window().map(window -> window.top().values().stream().map(item -> item.name()).toList())
-                .orElse(List.of());
-    }
-
-    private static boolean hasButton(Bot bot, String text) {
-        return bot.window().map(window -> window.top().values().stream()
-                .anyMatch(item -> item.name().contains(text))).orElse(false);
+    private static de.raindancer.e2e.ShownDialog hub(Bot bot, String command) {
+        int before = bot.dialogsShown();
+        bot.run(command);
+        return bot.awaitDialog(before, WAIT);
     }
 
     @Test
@@ -45,25 +37,26 @@ class HubScenarioTest {
             Bot bo = server.player("Bo");
             Bot ada = server.admin("Ada");
 
-            bo.run("hub");
-            bo.awaitWindow("Hub");
-                        assertThat(hasButton(bo, "Warps")).isTrue();
-            assertThat(hasButton(bo, "Homes")).as("every /home command needs a permission Bo lacks").isFalse();
-            bo.clickSlot(slotNamed(bo, "Warps"));
-            bo.awaitWindow("Warps");
-            assertThat(hasButton(bo, "/warp")).isTrue();
+            de.raindancer.e2e.ShownDialog hub = hub(bo, "hub");
+            assertThat(hub.button("Warps")).isPresent();
+            assertThat(hub.button("Homes")).as("every /home command needs a permission Bo lacks").isEmpty();
+            assertThat(hub.button("Your preferences")).isPresent();
+            assertThat(hub.button("Server settings")).as("staff only").isEmpty();
+            int before = bo.dialogsShown();
+            bo.pressDialogButton("Warps", Map.of());
+            Await.until("Warps open, as a page or as its window of commands", WAIT, () ->
+                    bo.window().map(window -> window.title().contains("Warp")).orElse(false)
+                            || bo.dialogsShown() > before && bo.dialog().map(dialog -> dialog.button("/warp").isPresent())
+                            .orElse(false));
             bo.closeWindow();
 
-            bo.run("smp");
-            bo.awaitWindow("Hub");
+            assertThat(hub(bo, "smp").title()).as("/smp is the hub too").isEqualTo(hub.title());
 
-            ada.run("hub");
-            ada.awaitWindow("Hub");
-            assertThat(hasButton(ada, "Homes")).isTrue();
-            assertThat(hasButton(ada, "Moderation")).isTrue();
+            de.raindancer.e2e.ShownDialog staff = hub(ada, "hub");
+            assertThat(staff.button("Homes")).isPresent();
+            assertThat(staff.button("Moderation")).isPresent();
 
-            ada.run("hub homes");
-            ada.awaitWindow("Homes");
+            assertThat(hub(ada, "hub homes").title()).contains("Homes");
 
             String console = server.console("hub");
             assertThat(console).contains("feature(s)");
