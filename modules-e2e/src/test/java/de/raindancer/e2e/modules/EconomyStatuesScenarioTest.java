@@ -257,7 +257,7 @@ class EconomyStatuesScenarioTest {
             Await.ticks(20);
             ada.forgetChat();
             ada.run("eco statue place prime");
-            Await.until("Ada is told one Prime statue stands", WAIT, () -> said(ada, "Statue #1 of the Prime supporters"));
+            Await.until("Ada is told one Prime statue stands", WAIT, () -> said(ada, "Statue #1 of the Prime members"));
             Await.until("one statue stands", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 1);
             Await.ticks(40);
             assertThat(count(server, "@e[type=minecraft:block_display]")).as("no pedestal").isZero();
@@ -268,7 +268,7 @@ class EconomyStatuesScenarioTest {
             server.console("tp Ada 303.5 100 300.5 0 0");
             Await.ticks(10);
             ada.run("eco statue place prime");
-            Await.until("a second one, the next place", WAIT, () -> said(ada, "Statue #2 of the Prime supporters"));
+            Await.until("a second one, the next place", WAIT, () -> said(ada, "Statue #2 of the Prime members"));
             Await.until("two statues now", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 2);
             assertThat(count(server, "@e[type=minecraft:block_display]")).isZero();
         }

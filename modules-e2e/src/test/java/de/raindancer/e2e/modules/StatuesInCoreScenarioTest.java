@@ -106,7 +106,7 @@ class StatuesInCoreScenarioTest {
             Await.ticks(10);
             ada.forgetChat();
             ada.run("eco statue place prime");
-            Await.until("Ada is told", WAIT, () -> said(ada, "Statue #1 of the Prime supporters"));
+            Await.until("Ada is told", WAIT, () -> said(ada, "Statue #1 of the Prime members"));
             Await.until("an empty Prime statue stands", WAIT, () -> count(server, wearing("-")) == 2);
             server.console("prime grant Bo 31");
             Await.until("Bo stands on it", WAIT, () -> count(server, wearing(bo.id().toString())) == 2);
