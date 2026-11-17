@@ -82,7 +82,7 @@ class CosmeticsScenarioTest {
             bo.runAndExpect("cosmetics particle shape ambient", "It is drawn");
             bo.runAndOpen("cosmetics particle", "Your particles");
             bo.answer(() -> bo.click("Preview"), answer -> answer.says("That is your particle"));
-            bo.runAndExpect("cosmetics particle off", "No more sparkles");
+            bo.runAndExpect("cosmetics particle off", "Your particle is removed");
             bo.runAndExpect("cosmetics particle shape aura", "You are not wearing a particle");
 
             // The styled nametag rides the players, previews on request, and goes when switched off.
