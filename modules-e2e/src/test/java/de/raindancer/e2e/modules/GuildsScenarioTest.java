@@ -80,6 +80,8 @@ class GuildsScenarioTest {
             ada.attack(bo.id());
             Await.ticks(20);
             assertThat(bo.health()).as("a guildmate cannot hurt Bo").isEqualTo(before);
+            Await.until("Ada is told it is her guild's friendly fire", WAIT, () -> ada.chatText().stream()
+                    .anyMatch(line -> line.contains("friendly fire off")));
             cy.attack(bo.id());
             Await.until("a stranger's hit lands", WAIT, () -> bo.health() < before);
 
