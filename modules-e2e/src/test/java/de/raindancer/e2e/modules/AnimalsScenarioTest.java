@@ -131,21 +131,23 @@ class AnimalsScenarioTest {
             assertThat(server.console("data get entity @e[tag=z,limit=1] Health")).as("Thorns hit back").doesNotContain("20.0");
             assertThat(server.console("attribute @e[tag=breath,limit=1] minecraft:oxygen_bonus get")).contains("3.0");
 
-            // ---- the whistle: ride the horse once, walk off, whistle — it comes
+            // ---- the whistle: ride the horse once, walk off, whistle — it teleports in front of you, facing you
             server.console("summon minecraft:horse 5 " + Y + " 0 {Tags:[\"steed\"],Tame:1b,Owner:" + owner(ada.id()) + "}");
             Await.ticks(10);
             server.console("ride Ada mount @e[tag=steed,limit=1]");
             Await.ticks(10);
             server.console("ride Ada dismount");
             Await.ticks(10);
-            server.console("tp Ada 40.5 " + Y + " 0.5");
+            server.console("tp Ada 40.5 " + Y + " 0.5 0 0"); // looking south, along +z
             server.console("clear Ada");
             server.console("give Ada animals:whistle");
             Await.ticks(10);
             ada.hold(0);
             ada.useHeld();
-            Await.until("the horse came to Ada", WAIT, () -> server.console(
-                    "execute if entity @e[tag=steed,x=40,y=" + Y + ",z=0,distance=..4]").contains("passed"));
+            Await.until("the horse came to Ada, landing a few blocks in front of her", WAIT, () -> server.console(
+                    "execute if entity @e[tag=steed,x=40.5,y=" + Y + ",z=3.5,distance=..1.5]").contains("passed"));
+            assertThat(server.console("data get entity @e[tag=steed,limit=1] Rotation[0]"))
+                    .as("turned to face her").contains("180.0");
 
             // ---- stats: each player switches them for themselves
             ada.runAndExpect("horses stats", "off");
