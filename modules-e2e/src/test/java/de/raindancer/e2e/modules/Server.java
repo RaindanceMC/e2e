@@ -40,6 +40,13 @@ final class Server implements AutoCloseable {
     /** @param files written under the server folder before it starts: relative path to content */
     static Server start(String scenario, List<String> plugins, List<Path> others,
                         java.util.Map<String, String> files, List<String> upLines) {
+        return start(scenario, plugins, others, files, java.util.Map.of(), upLines);
+    }
+
+    /** @param copies binary files (music, schematics) copied under the server folder before it starts */
+    static Server start(String scenario, List<String> plugins, List<Path> others,
+                        java.util.Map<String, String> files, java.util.Map<String, Path> copies,
+                        List<String> upLines) {
         PaperServer.Builder builder = PaperServer.forRun()
                 .seed(1)
                 .in(E2e.serverFolder(scenario))
@@ -56,6 +63,11 @@ final class Server implements AutoCloseable {
         files.forEach(builder::file);
         Server server = new Server(scenario, builder.build());
         try {
+            for (var copy : copies.entrySet()) {
+                Path target = server.paper.folder().resolve(copy.getKey());
+                Files.createDirectories(target.getParent());
+                Files.copy(copy.getValue(), target);
+            }
             server.paper.start();
             for (String line : upLines) {
                 server.paper.awaitLog(line, Duration.ofSeconds(60));
@@ -63,6 +75,9 @@ final class Server implements AutoCloseable {
         } catch (RuntimeException | AssertionError failed) {
             server.close();
             throw failed;
+        } catch (IOException failed) {
+            server.close();
+            throw new UncheckedIOException(failed);
         }
         return server;
     }
