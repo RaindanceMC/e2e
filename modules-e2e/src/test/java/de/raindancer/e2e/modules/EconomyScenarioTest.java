@@ -329,7 +329,7 @@ class EconomyScenarioTest {
                     () -> ada.window().flatMap(window -> window.slotNamed("…")).isPresent());
             Await.until("it lands and Ada is told", WAIT, () -> said(ada, "It landed"));
             Await.until("the window shows the side", WAIT, () -> ada.window()
-                    .flatMap(window -> window.slotNamed("Heads!").or(() -> window.slotNamed("Tails!"))).isPresent());
+                    .flatMap(window -> window.slotNamed("Heads").or(() -> window.slotNamed("Tails"))).isPresent());
             ada.closeWindow();
 
             // ---- dice: the marker runs, the roll is told
@@ -469,7 +469,7 @@ class EconomyScenarioTest {
                     || said(ada, "comes back"));
             ada.closeWindow();
 
-            // ---- hi-lo and mines: started, then the window closed — which cashes out
+            // ---- hi-lo: closing on the first card hands nothing back, the card waits; after a guess closing cashes out
             ada.forgetChat();
             ada.run("hilo");
             ada.awaitWindow("Hi-Lo");
@@ -477,7 +477,20 @@ class EconomyScenarioTest {
             Await.until("the first card shows", WAIT, () -> ada.window().flatMap(window -> window.slotNamed("Higher")
                     .or(() -> window.slotNamed("Lower"))).isPresent());
             ada.closeWindow();
-            Await.until("the stake comes back", WAIT, () -> said(ada, "comes back"));
+            Await.until("the card stays on the table", WAIT, () -> said(ada, "still on the table"));
+            assertThat(said(ada, "comes back")).as("no free redraw of the first card").isFalse();
+            ada.forgetChat();
+            ada.run("hilo");
+            ada.awaitWindow("Hi-Lo");
+            Await.until("the same run picks up again", WAIT, () -> ada.window().flatMap(window -> window.slotNamed("Higher")
+                    .or(() -> window.slotNamed("Lower"))).isPresent());
+            assertThat(ada.window().orElseThrow().slotNamed("Start")).as("no new bet, the old card").isEmpty();
+            ada.click(ada.window().orElseThrow().slotNamed("Higher").isPresent() ? "Higher" : "Lower");
+            Await.ticks(30);
+            ada.closeWindow();
+            Await.until("a guess, then closing: cashed out or lost", WAIT, () -> said(ada, "Cashed out on the")
+                    || said(ada, "Wrong guess"));
+            // ---- mines: started, then the window closed — which cashes out
             ada.forgetChat();
             ada.run("mines");
             ada.awaitWindow("Mines");
