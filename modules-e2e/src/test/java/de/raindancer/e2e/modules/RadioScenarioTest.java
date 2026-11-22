@@ -78,16 +78,26 @@ class RadioScenarioTest {
             assertThat(bo.runAndExpect("music status", "Night").chat()).anyMatch(line -> line.contains("Night"));
             assertThat(bo.complete("/music station n")).contains("night");
 
-            // ---- the page: four stations, a click tunes in
-            Bot.Window page = bo.runAndOpen("music", "Radio").window().orElseThrow();
-            assertThat(page.slotNamed("Calm")).isPresent();
-            assertThat(page.slotNamed("Adventure")).isPresent();
-            assertThat(page.slotNamed("Cozy")).isPresent();
-            assertThat(page.slotNamed("Night")).isPresent();
+            // ---- the window: the game's own dialog, what plays on top, four stations, buttons that work
+            int windows = bo.dialogsShown();
+            bo.run("music");
+            de.raindancer.e2e.ShownDialog window = bo.awaitDialog(windows, Duration.ofSeconds(10));
+            assertThat(window.title()).contains("Radio");
+            assertThat(window.text()).contains("Night").contains("30%");
+            assertThat(window.buttons()).extracting(de.raindancer.e2e.ShownDialog.Button::label)
+                    .contains("Calm", "Adventure", "Cozy", "▶ Night", "Skip", "Turn off", "− Quieter", "+ Louder");
             bo.forgetEffects();
-            bo.click("Calm");
-            Await.until(() -> "a click on Calm tunes in " + bo.soundsHeard(), WAIT, () -> heard(bo, "rainsradio:music.calm."));
-            bo.closeWindow();
+            windows = bo.dialogsShown();
+            bo.pressDialogButton("Calm", Map.of());
+            window = bo.awaitDialog(windows, Duration.ofSeconds(10));
+            assertThat(window.buttons()).extracting(de.raindancer.e2e.ShownDialog.Button::label).contains("▶ Calm");
+            Await.until(() -> "pressing Calm tunes in " + bo.soundsHeard(), WAIT, () -> heard(bo, "rainsradio:music.calm."));
+            windows = bo.dialogsShown();
+            bo.pressDialogButton("+ Louder", Map.of());
+            assertThat(bo.awaitDialog(windows, Duration.ofSeconds(10)).text()).contains("40%");
+            windows = bo.dialogsShown();
+            bo.pressDialogButton("Cozy", Map.of());
+            assertThat(bo.awaitDialog(windows, Duration.ofSeconds(10)).text()).contains("Cozy has no tracks yet");
 
             // ---- logging on again: the radio comes back by itself, and the greeting stays quiet
             Bot again = bo.rejoin();
