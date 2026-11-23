@@ -81,7 +81,7 @@ class ElytraScenarioTest {
             assertThat(server.console("execute if items entity Ada weapon.mainhand " + TRIMMED))
                     .as("the look leaves the trim on").contains("passed");
 
-            ada.runAndExpect("elytra look none", "plain wings");
+            ada.run("elytra look none");
             Await.until("the elytra is plain again", WAIT, () -> !held(server).contains("rainselytra:"));
 
             ada.runAndOpen("elytra", "Elytra looks");

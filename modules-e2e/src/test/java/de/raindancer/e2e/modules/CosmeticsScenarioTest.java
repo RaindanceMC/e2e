@@ -64,25 +64,37 @@ class CosmeticsScenarioTest {
             bo.pressDialogButton("Particles", java.util.Map.of());
             bo.awaitWindow("Your particles");
             bo.closeWindow();
-            bo.runAndExpect("cosmetics particle flame", "You are wearing");
-            bo.runAndExpect("cosmetics particle shape halo", "It is drawn");
+            bo.run("cosmetics particle flame");
+            awaitChoice(server, "particle", "flame");
+            bo.run("cosmetics particle shape halo");
+            awaitChoice(server, "particle-shape", "halo");
             bo.runAndExpect("cosmetics particle shape cube", "The shapes are");
             bo.runAndExpect("cosmetics particle elder_guardian", "is not allowed here");
             bo.runAndExpect("cosmetics particle block", "is not a particle that can be worn");
-            bo.runAndExpect("cosmetics particle dust", "You are wearing");
-            bo.runAndExpect("cosmetics particle colour pink", "Its colour is changed");
-            bo.runAndExpect("cosmetics particle density very_dense", "Density: Very dense");
+            bo.run("cosmetics particle dust");
+            awaitChoice(server, "particle", "dust");
+            String uncoloured = choice(server);
+            bo.run("cosmetics particle colour pink");
+            Await.until("the colour changes", Duration.ofSeconds(10), () -> !choice(server).equals(uncoloured)
+                    && choice(server).contains("rainscosmetics:particle-colour"));
+            bo.run("cosmetics particle density very_dense");
+            awaitChoice(server, "particle-density", "very_dense");
             bo.runAndExpect("cosmetics particle density thick", "Densities are");
-            bo.runAndExpect("cosmetics particle speed very_fast", "Speed: Very fast");
+            bo.run("cosmetics particle speed very_fast");
+            awaitChoice(server, "particle-speed", "very_fast");
             bo.runAndExpect("cosmetics particle speed warp", "Speeds are");
             Await.ticks(60);   // the timer draws it for a few rounds, near Ada too
             bo.rejoin();
-            bo.runAndExpect("cosmetics particle shape trail", "It is drawn");
-            bo.runAndExpect("cosmetics particle shape spiral", "It is drawn");
-            bo.runAndExpect("cosmetics particle shape ambient", "It is drawn");
+            bo.run("cosmetics particle shape trail");
+            awaitChoice(server, "particle-shape", "trail");
+            bo.run("cosmetics particle shape spiral");
+            awaitChoice(server, "particle-shape", "spiral");
+            bo.run("cosmetics particle shape ambient");
+            awaitChoice(server, "particle-shape", "ambient");
             bo.runAndOpen("cosmetics particle", "Your particles");
             bo.answer(() -> bo.click("Preview"), answer -> answer.says("That is your particle"));
-            bo.runAndExpect("cosmetics particle off", "Your particle is removed");
+            bo.run("cosmetics particle off");
+            Await.until("the particle is off", Duration.ofSeconds(10), () -> !choice(server).contains("rainscosmetics:particle\""));
             bo.runAndExpect("cosmetics particle shape aura", "You are not wearing a particle");
 
             // The styled nametag rides the players, previews on request, and goes when switched off.
@@ -119,5 +131,17 @@ class CosmeticsScenarioTest {
     private static String nametagOf(Server server, String player) {
         return server.console("execute as " + player
                 + " at @s as @e[type=minecraft:text_display,distance=..3,sort=nearest,limit=1] run data get entity @s text");
+    }
+
+    /** Bo's stored cosmetics choices, as the server holds them. */
+    private static String choice(Server server) {
+        return server.console("data get entity Bo BukkitValues").toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static void awaitChoice(Server server, String key, String value) {
+        java.util.regex.Pattern stored = java.util.regex.Pattern.compile(
+                "\"rainscosmetics:" + java.util.regex.Pattern.quote(key) + "\"\\s*:\\s*\"" + java.util.regex.Pattern.quote(value) + "\"");
+        Await.until(() -> key + " is " + value + " (" + choice(server) + ")", Duration.ofSeconds(10),
+                () -> stored.matcher(choice(server)).find());
     }
 }

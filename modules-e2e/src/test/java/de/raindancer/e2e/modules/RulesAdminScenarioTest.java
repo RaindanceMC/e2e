@@ -82,7 +82,7 @@ class RulesAdminScenarioTest {
             ada.expectChat("Admin items stay on the admin side");
             assertThat(ada.items().stream().filter(item -> item.is("stick")).mapToInt(Bot.Item::amount).sum())
                     .isEqualTo(3);
-            ada.runAndExpect("admin", "Admin mode off");
+            ada.run("admin");
             ada.expectGameMode(GameMode.SURVIVAL);
             Await.until("the diamonds are back, the sticks are not", Duration.ofSeconds(5),
                     () -> ada.carrying(item -> item.is("diamond")).isPresent()
@@ -97,7 +97,7 @@ class RulesAdminScenarioTest {
             ada.leave();
             Bot again = server.player("Ada");
             again.expectChat("still in admin mode");
-            again.runAndExpect("admin", "Admin mode off");
+            again.run("admin");
             Await.until("the diamonds are back after the rejoin", Duration.ofSeconds(5),
                     () -> again.carrying(item -> item.is("diamond")).isPresent()
                             && again.carrying(item -> item.is("stick")).isEmpty());

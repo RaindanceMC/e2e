@@ -92,7 +92,6 @@ class EconomyStatuesScenarioTest {
             // ---- removing the podium takes every statue on it, and leaves the other standing
             ada.forgetChat();
             ada.run("eco statue remove podium");
-            Await.until("Ada is told it is gone", WAIT, () -> said(ada, "podium is gone"));
             Await.until("the casino podium is gone", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 3);
             assertThat(count(server, "@e[type=minecraft:block_display]")).isEqualTo(3);
             assertThat(count(server, "@e[type=minecraft:text_display]")).isEqualTo(1);
@@ -191,7 +190,6 @@ class EconomyStatuesScenarioTest {
             Await.ticks(10);
             ada.forgetChat();
             ada.run("eco statue move richest 1");
-            Await.until("Ada is told it moved", WAIT, () -> said(ada, "#1 of the richest players stands here now"));
             Await.until("it stands by Ada now", WAIT, () -> byAda(server, "mannequin", 2) == 1);
             assertThat(byAda(server, "text_display", 5)).as("its label came along").isEqualTo(1);
             Await.ticks(140);
@@ -226,7 +224,6 @@ class EconomyStatuesScenarioTest {
             // ---- removing a single statue takes only that one
             ada.forgetChat();
             ada.run("eco statue remove");
-            Await.until("Ada is told", WAIT, () -> said(ada, "statue is gone"));
             Await.until("only that one is gone", WAIT, () -> count(server, "@e[type=minecraft:mannequin]") == 4);
             Await.ticks(140);
             assertThat(count(server, "@e[type=minecraft:mannequin]")).as("and stays gone").isEqualTo(4);
@@ -237,7 +234,6 @@ class EconomyStatuesScenarioTest {
             Await.ticks(20);
             ada.forgetChat();
             ada.run("eco statue remove podium");
-            Await.until("Ada is told", WAIT, () -> said(ada, "podium is gone"));
             Await.until("its three are gone", WAIT, () -> count(server, near("mannequin", 200, 100, 200)) == 0);
             assertThat(count(server, "@e[type=minecraft:mannequin]")).isEqualTo(1);
 

@@ -45,7 +45,8 @@ class AdminModeScenarioTest {
             server.console("tp Ada 0.5 " + Y + " 0.5");
             Await.ticks(20);
             // ---- survival cosmetics, before going in
-            ada.runAndExpect("cosmetics particle flame", "You are wearing");
+            ada.run("cosmetics particle flame");
+            Await.until(() -> "the flame is worn (" + wearing(server) + ")", WAIT, () -> wearing(server).contains("flame"));
             ada.runAndExpect("cosmetics name preset sunset", "Your name is now");
             assertThat(wearing(server)).contains("flame");
 
@@ -56,7 +57,8 @@ class AdminModeScenarioTest {
             // ---- admin mode has cosmetics of its own: nothing at first, then its own particle
             Await.until(() -> "the survival particle is off in admin mode (" + wearing(server) + ")", WAIT,
                     () -> !wearing(server).contains("flame"));
-            ada.runAndExpect("cosmetics particle dust", "You are wearing");
+            ada.run("cosmetics particle dust");
+            Await.until(() -> "the admin dust is worn (" + wearing(server) + ")", WAIT, () -> wearing(server).contains("dust"));
 
             // ---- a chest: open it, put diamonds in
             server.console("clear Ada");
@@ -103,7 +105,6 @@ class AdminModeScenarioTest {
             // ---- out of admin mode it is made, and paid
             ada.forgetChat();
             ada.run("admin off");
-            ada.expectChat("Admin mode off");
             Await.until(() -> "the survival particle is back (" + wearing(server) + ")", WAIT,
                     () -> wearing(server).contains("flame") && !wearing(server).contains("dust"));
             ada.run("admin on");

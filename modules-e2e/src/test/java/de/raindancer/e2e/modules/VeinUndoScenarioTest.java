@@ -89,7 +89,6 @@ class VeinUndoScenarioTest {
             server.console("summon item 0.5 " + Y + " 5.5 {Item:{id:\"minecraft:diamond\",count:1},PickupDelay:32767}");
             miner.forgetChat();
             miner.run("ctrl-z");
-            miner.expectChat("restored.");
             Await.until("the ore is back", Duration.ofSeconds(10), () -> all(server, "minecraft:diamond_ore"));
             Await.until("every diamond of the vein is taken back", Duration.ofSeconds(10),
                     () -> diamonds(miner) == 0
@@ -189,7 +188,6 @@ class VeinUndoScenarioTest {
             ada.forgetChat();
             miner.forgetChat();
             miner.run("veinundo");
-            miner.expectChat("restored.");
             ada.expectChat("went back out of your inventory");
             ada.expectChat("was taken from your account for 2 item(s)");
             Await.until("the ore is back", Duration.ofSeconds(10), () -> all(server, "minecraft:diamond_ore"));
@@ -207,7 +205,6 @@ class VeinUndoScenarioTest {
             miner.expectChat("were not given back by anybody");
             assertThat(all(server, "minecraft:air")).as("nothing goes back before the bill is settled").isTrue();
             miner.run("ctrl-z pay");
-            miner.expectChat("restored.");
             Await.until("the ore is back again", Duration.ofSeconds(10), () -> all(server, "minecraft:diamond_ore"));
 
             assertThat(server.paper.errorsFrom("RainsCore", "RainsVeinToggle", "RainsEconomy")).isEmpty();

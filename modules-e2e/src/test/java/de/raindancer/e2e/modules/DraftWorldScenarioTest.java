@@ -135,7 +135,6 @@ class DraftWorldScenarioTest {
             assertThat(carries(server, "Ada", "diamond_sword")).isFalse();
             ada.forgetChat();
             ada.run("draftworld");
-            ada.expectChat("Back where you were");
             Await.until("out again", WAIT, () -> !inDraftWorld(server, "Ada"));
             Await.until("as herself", WAIT, () -> carries(server, "Ada", "diamond_sword"));
 

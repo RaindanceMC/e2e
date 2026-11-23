@@ -446,7 +446,7 @@ class SkillsScenarioTest {
             server.console("skills admin give Dee spell_scroll magic_missile 3");
             dee.expectItem("a scroll", item -> item.name().contains("Magic Missile"));
             dee.hold(dee.hotbarSlotOf(item -> item.name().contains("Magic Missile"))).useHeld();
-            dee.expectChat("crumbles to dust");
+            dee.expectNoItem("the scroll used up", item -> item.name().contains("Magic Missile") && item.amount() == 3);
             Await.until("the darts hurt it", WAIT, () -> health(server, target) < 200);
             double afterScroll = health(server, target);
             Await.ticks(30);

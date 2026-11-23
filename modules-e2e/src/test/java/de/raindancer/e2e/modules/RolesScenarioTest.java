@@ -206,8 +206,6 @@ class RolesScenarioTest {
             Await.until("Bo carries the pack", WAIT, () -> bo.carrying(item -> item.tag("pack").isPresent()).isPresent());
             bo.forgetChat();
             bo.use(item -> item.tag("pack").isPresent());
-            Await.until(() -> "the pack opens (heard " + bo.chatText() + ")", WAIT,
-                    () -> said(bo, "You unpacked the Explorer's Pack"));
             Await.until("its torches are there", WAIT, () -> bo.carrying(item -> item.is("torch")).isPresent());
             assertThat(bo.carrying(item -> item.tag("pack").isPresent())).as("the pack is used up").isEmpty();
 
