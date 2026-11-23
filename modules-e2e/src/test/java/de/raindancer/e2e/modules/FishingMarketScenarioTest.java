@@ -43,7 +43,7 @@ class FishingMarketScenarioTest {
     }
 
     @Test
-    @DisplayName("a golden fish is its own item; the fishmonger pays ten times for it; an aquarium takes fish and gives them back")
+    @DisplayName("a golden fish is its own item; the fishmonger pays ten times for it; aquariums side by side are one, opened like a chest")
     void market() throws Exception {
         try (Server server = Server.start("fishing-market",
                 List.of("fishing-standalone:RainsFishing-.*", "economy-standalone:RainsEconomy-.*"),
@@ -82,44 +82,53 @@ class FishingMarketScenarioTest {
             ada.run("fishing merchant remove");
             Await.until("he is gone", WAIT, () -> said(ada, "fishmonger is gone"));
 
-            // ---- an aquarium: set down, a fish put in and taken out, the tank picked up again
+            // ---- aquariums: two side by side are one, opened like a chest, a fish in and out, one tank picked up
             ada.run("clear");
-            ada.run("fishing give Ada aquarium");
-            ada.expectItem("an aquarium", item -> item.name().contains("Aquarium"));
+            ada.run("fishing give Ada aquarium 2");
+            Await.until("two aquariums", WAIT, () -> count(ada, "Aquarium") == 2);
             ada.run("fishing give Ada fish:hydro_dragonet:albino");
             ada.expectItem("an albino dragonet", item -> item.name().contains("Albino Hydro Dragonet"));
             var at = ada.position();
             int x = (int) Math.floor(at.getX()) + 2;
             int y = (int) Math.floor(at.getY());
             int z = (int) Math.floor(at.getZ());
-            server.console("setblock " + x + " " + (y - 1) + " " + z + " stone");
-            server.console("setblock " + x + " " + y + " " + z + " air");
+            server.console("fill " + x + " " + (y - 1) + " " + z + " " + (x + 1) + " " + (y - 1) + " " + z + " stone");
+            server.console("fill " + x + " " + y + " " + z + " " + (x + 1) + " " + y + " " + z + " air");
             ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Aquarium")));
             ada.useOn(x, y - 1, z);
-            Await.until("the tank is down", WAIT,
-                    () -> server.console("execute if block " + x + " " + y + " " + z + " barrier").contains("passed"));
+            ada.useOn(x + 1, y - 1, z);
+            Await.until("both tanks are down", WAIT, () -> server.console("execute if block " + x + " " + y + " " + z
+                    + " barrier").contains("passed") && server.console("execute if block " + (x + 1) + " " + y + " "
+                    + z + " barrier").contains("passed"));
+            assertThat(server.console("data get entity @e[type=minecraft:item_display,limit=1,sort=nearest,x="
+                    + (x + 0.5) + ",y=" + (y + 0.5) + ",z=" + (z + 0.5) + "] item.components"))
+                    .as("the west tank wears the look joined on the east").contains("aquarium_2");
+
+            // a fish in hand goes straight in
             ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Hydro Dragonet")));
             ada.forgetChat();
-            ada.useOn(x, y, z);
-            Await.until("the fish is in", WAIT, () -> said(ada, "swimming in your aquarium"));
+            ada.useOn(x + 1, y, z);
+            Await.until("the fish is in", WAIT, () -> said(ada, "swimming in the aquarium"));
             assertThat(count(ada, "Hydro Dragonet")).isZero();
-            // the tank is one display, the fish swimming in it another ("Test passed, count: 2")
-            Await.until("tank and fish are shown", WAIT, () -> server.console("execute if entity "
-                    + "@e[type=minecraft:item_display,x=" + (x + 0.5) + ",y=" + (y + 0.5) + ",z=" + (z + 0.5)
-                    + ",distance=..1]").contains("count: 2"));
 
-            // a sneaking right click with an empty hand takes the fish out
-            // the tank and the fish both left the hotbar, so the last slot is empty
+            // opened from the other tank, both are one aquarium of six slots holding the dragonet
             ada.hold(8);
-            ada.sneak(true);
             ada.useOn(x, y, z);
+            Bot.Window tank = ada.awaitWindow("Aquarium · 2 tanks");
+            assertThat(tank.slotNamed("Albino Hydro Dragonet")).contains(0);
+            assertThat(tank.top().get(6)).as("the seventh slot is beyond two tanks")
+                    .satisfies(item -> assertThat(item.is("black_stained_glass_pane")).isTrue());
+            ada.clickSlot(0);
             Await.until("the dragonet is back", WAIT, () -> count(ada, "Albino Hydro Dragonet") == 1);
+            ada.closeWindow();
 
-            // a sneaking left click picks the tank up
-            ada.dig(x, y, z);
+            // a sneaking left click picks one tank up; the other stays, on its own again
+            ada.sneak(true);
+            ada.dig(x + 1, y, z);
             Await.until("the tank is picked up", WAIT, () -> count(ada, "Aquarium") == 1);
             ada.sneak(false);
-            assertThat(server.console("execute if block " + x + " " + y + " " + z + " air")).contains("passed");
+            assertThat(server.console("execute if block " + (x + 1) + " " + y + " " + z + " air")).contains("passed");
+            assertThat(server.console("execute if block " + x + " " + y + " " + z + " barrier")).contains("passed");
         }
     }
 }
