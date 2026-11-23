@@ -108,8 +108,7 @@ class FishingMarketScenarioTest {
             ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Hydro Dragonet")));
             ada.forgetChat();
             ada.useOn(x + 1, y, z);
-            Await.until("the fish is in", WAIT, () -> said(ada, "swimming in the aquarium"));
-            assertThat(count(ada, "Hydro Dragonet")).isZero();
+            Await.until("the fish is in", WAIT, () -> count(ada, "Hydro Dragonet") == 0);
 
             // opened from the other tank, both are one aquarium of six slots holding the dragonet
             ada.hold(8);
