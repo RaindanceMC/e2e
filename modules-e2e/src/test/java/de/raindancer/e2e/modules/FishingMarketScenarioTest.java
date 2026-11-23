@@ -122,12 +122,21 @@ class FishingMarketScenarioTest {
             Await.until("the dragonet is back", WAIT, () -> count(ada, "Albino Hydro Dragonet") == 1);
             ada.closeWindow();
 
-            // a sneaking left click picks one tank up; the other stays, on its own again
-            ada.sneak(true);
+            // mined like a glass block in survival: it breaks, the tank drops as an item; the other stays, on its own
+            server.console("gamemode survival Ada");
+            var eye = ada.position();
+            double dx = x + 1.5 - eye.getX();
+            double dy = y + 0.5 - (eye.getY() + 1.62);
+            double dz = z + 0.5 - eye.getZ();
+            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+            ada.look(yaw, pitch);
+            Await.ticks(5);
             ada.dig(x + 1, y, z);
-            Await.until("the tank is picked up", WAIT, () -> count(ada, "Aquarium") == 1);
-            ada.sneak(false);
-            assertThat(server.console("execute if block " + (x + 1) + " " + y + " " + z + " air")).contains("passed");
+            Await.until("the tank breaks", WAIT, () -> server.console("execute if block " + (x + 1) + " " + y + " "
+                    + z + " air").contains("passed"));
+            Await.until("it dropped as an item", WAIT, () -> server.console("execute if entity @e[type=minecraft:item,"
+                    + "x=" + (x + 1.5) + ",y=" + y + ",z=" + (z + 0.5) + ",distance=..3]").contains("passed"));
             assertThat(server.console("execute if block " + x + " " + y + " " + z + " barrier")).contains("passed");
         }
     }
