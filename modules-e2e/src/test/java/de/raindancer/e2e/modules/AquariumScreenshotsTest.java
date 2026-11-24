@@ -16,7 +16,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A big aquarium in the real client, wearing the pack: six tanks side by side as one, with fish of every temper in it,
+ * A big aquarium in the real client, wearing the pack: six tanks side by side and three more stacked on the front row,
+ * all one, with fish of every temper in it,
  * seen from the front, at an angle and close up, twice a few seconds apart so the swimming shows:
  * {@code mvn -o -Pscreenshots test -pl modules-e2e -Dtest=AquariumScreenshotsTest}.
  */
@@ -32,7 +33,7 @@ class AquariumScreenshotsTest {
     }
 
     @Test
-    @DisplayName("six tanks side by side read as one aquarium, its fish swimming each their own way")
+    @DisplayName("six tanks side by side and three stacked on them read as one aquarium, its fish swimming each their own way")
     void aquarium() throws java.io.IOException {
         try (Server server = Server.start("aquarium-looks", List.of("fishing-standalone:RainsFishing-.*"),
                 List.of("Fishing is up"))) {
@@ -47,8 +48,8 @@ class AquariumScreenshotsTest {
             server.console("tp Ada 0.5 64 0.5");
             Await.ticks(20);
             ada.run("clear");
-            ada.run("fishing give Ada aquarium 6");
-            Await.until("six aquariums", Duration.ofSeconds(10), () -> count(ada, "Aquarium") == 6);
+            ada.run("fishing give Ada aquarium 9");
+            Await.until("nine aquariums", Duration.ofSeconds(10), () -> count(ada, "Aquarium") == 9);
             ada.hold(ada.hotbarSlotOf(item -> item.name().contains("Aquarium")));
             for (int x = 2; x <= 4; x++) {
                 for (int z = 0; z <= 1; z++) {
@@ -62,6 +63,19 @@ class AquariumScreenshotsTest {
                         if (!server.console("execute if block " + x + " 64 " + z + " barrier").contains("passed")) {
                             return false;
                         }
+                    }
+                }
+                return true;
+            });
+            // three more on the front row, set down on top of it
+            for (int x = 2; x <= 4; x++) {
+                ada.useOn(x, 64, 0);
+                Await.ticks(4);
+            }
+            Await.until("the second storey is up", Duration.ofSeconds(10), () -> {
+                for (int x = 2; x <= 4; x++) {
+                    if (!server.console("execute if block " + x + " 65 0 barrier").contains("passed")) {
+                        return false;
                     }
                 }
                 return true;
@@ -82,8 +96,8 @@ class AquariumScreenshotsTest {
             Await.ticks(20);
             String displays = server.console(
                     "execute if entity @e[type=minecraft:item_display,x=3.5,y=64.5,z=1,distance=..3]");
-            assertThat(displays).as("six tanks and ten fish shown; Ada heard: " + ada.chatText())
-                    .contains("Count: 16");
+            assertThat(displays).as("nine tanks and ten fish shown; Ada heard: " + ada.chatText())
+                    .contains("Count: 19");
             server.console("tp Ada -12 64 -12");
 
             // ---- the real client looks at it
@@ -106,7 +120,7 @@ class AquariumScreenshotsTest {
                 viewer.screenshot(shots.resolve("aquarium-3-close.png"));
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("aquarium-3b-close-later.png"));
-                server.console("tp Viewer 3.5 68.5 1 0 90");
+                server.console("tp Viewer 3.5 69.5 1 0 90");
                 Await.ticks(40);
                 viewer.screenshot(shots.resolve("aquarium-4-top.png"));
 
